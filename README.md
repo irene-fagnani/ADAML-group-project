@@ -1,2 +1,2 @@
 # ADAML-group-project
-Group Project for ADALM course, a.y. 2024/25 (LUT University)
+Group Project for Advance Data Analyisi and Machine Learning course, a.y. 2024/25 (LUT University)
