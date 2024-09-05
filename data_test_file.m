@@ -29,3 +29,5 @@ df1 = df1(:, sort(df1_names));
 df2 = df2(:, sort(df2_names));
 
 df_complete = [df1;df2];
+df_complete.Var1 = [];
+df_complete = unique(df_complete, 'rows');
