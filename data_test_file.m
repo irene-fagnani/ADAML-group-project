@@ -63,3 +63,42 @@ end
 
 % Adjust x-axis limits to make sure all text is visible
 xlim([0 length(y) + 1]);
+
+%% graphs
+clear("df1")
+clear("df2")
+
+df1 = readtable('data_part_1.csv', 'ReadVariableNames',true);
+df2 = readtable('data_part_2.csv', 'ReadVariableNames',true);
+
+df1_wl=df1(:,22:1742);
+df2_wl=df2(:,39:1759);
+
+df_wl=[df1_wl;df2_wl];
+%% add NaN columns where water absorption happens
+
+for ii=1:80 % the 952 column should be the first NaN column
+
+end
+
+%%
+x_vect=linspace(400,2450, 1721);
+
+mean_vect=table2array(mean(df_wl));
+min_vect=table2array(min(df_wl));
+max_vect=table2array(max(df_wl));
+
+%%
+hold on;
+plot(x_vect, mean_vect,'DisplayName','mean');
+plot(x_vect, min_vect, 'DisplayName','minimum');
+plot(x_vect, max_vect, 'DisplayName','maximum')
+hold off;
+
+xlabel('wavelength');
+ylabel('Reflectance');
+legend('show');
+grid on;
+
+
+
