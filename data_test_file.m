@@ -64,7 +64,7 @@ end
 % Adjust x-axis limits to make sure all text is visible
 xlim([0 length(y) + 1]);
 
-%% graphs
+%% graphs (wavelength part)
 clear("df1")
 clear("df2")
 
@@ -73,35 +73,41 @@ df2 = readtable('data_part_2.csv', 'ReadVariableNames',true);
 
 df1_wl=df1(:,22:1742);
 df2_wl=df2(:,39:1759);
-
+%%
 df_wl=[df1_wl;df2_wl];
 df_wl=table2array(df_wl);
-%% add NaN columns where water absorption happens (1351-1430; 1801-2023;2451-2501)
+%% add NaN columns where water absorption happens (1351–1430, 1801–2050 and 2451–2501 nm)
+
+%% first bandwith
 col_nan=NaN(13295,1);
 
 for ii=1:80 % the 952 column should be the first NaN column
-    df_wl = [df_wl(:, 1:950+ii) col_nan df_wl(:, 951+ii+1:end)];
+    df_wl = [df_wl(:, 1:950+ii) col_nan df_wl(:, 951+ii:end)];
 end
 
-pos=80+(1801-401);
+size(df_wl,2)
 
-for ii=1:223 
+%% second bandwith
+pos=1322+79-1;
+
+for ii=1:250 
     df_wl = [df_wl(:, 1:pos+ii) col_nan df_wl(:, pos+ii+1:end)];
 end
 
 
 %%
-x_vect=linspace(400,2450, 1721);
 
+% substitute min and max with 99% quantiles
 mean_vect=(mean(df_wl));
-min_vect=(min(df_wl));
-max_vect=(max(df_wl));
+min_vect=prctile(df_wl,1);
+max_vect=prctile(df_wl,99);
 
 %%
+x_vect=linspace(400,2450,2051);
 hold on;
-plot(mean_vect,'DisplayName','mean');
-plot(min_vect, 'DisplayName','minimum');
-plot(max_vect, 'DisplayName','maximum')
+plot(x_vect,mean_vect,'DisplayName','mean');
+plot(x_vect, min_vect, 'DisplayName','1% percentile');
+plot(x_vect, max_vect, 'DisplayName','99% percentile')
 hold off;
 
 xlabel('wavelength');
