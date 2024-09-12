@@ -1,17 +1,16 @@
-%% Data import
-
+%% Data import and combination
 clearvars
 close all
 clc
 
-df1 = readtable('data_part_1.csv', 'ReadVariableNames',true);
-df2 = readtable('data_part_2.csv', 'ReadVariableNames',true);
+df1_orig = readtable('data_part_1.csv', 'ReadVariableNames',true);
+df2_orig = readtable('data_part_2.csv', 'ReadVariableNames',true);
+df1 = df1_orig;
+df2 = df2_orig;
 
-%%
-
+% Checking if the column names match
 df1_names = df1.Properties.VariableNames;
 df2_names = df2.Properties.VariableNames;
-
 
 df2_not_in_df1 = setdiff(df2_names, df1_names);
 df1_not_in_df2 = setdiff(df1_names, df2_names);
@@ -21,21 +20,22 @@ for i = 1:length(df2_not_in_df1)
     df1.(missing) = NaN(height(df1), 1);
 end
 
+df_names = df2.Properties.VariableNames; % Because df2 has all names and they're already in correct order.
 
-df1_names = df1.Properties.VariableNames;
-df2_names = df2.Properties.VariableNames;
+df1_complete = df1(:, df_names);
+df2_complete = df2(:, df_names);
 
-df1 = df1(:, sort(df1_names));
-df2 = df2(:, sort(df2_names));
-
-df_complete = [df1;df2];
+df_complete = [df1_complete;df2_complete];
 df_complete.Var1 = [];
-df_complete = table2array(unique(df_complete, 'rows'));
 
-%%
-traits = df_complete(:,1:37);
+M_complete = table2array(unique(df_complete, 'rows'));
+M_traits = M_complete(:,1:37);
+M_wl = M_complete(:,38:end);
 
-empty_cells = ones(height(traits), width(traits));
+%% Plotting of trait observations in all data rows.
+traits = M_complete(:,1:37);
+
+observations = ones(height(traits), width(traits));
 
 % Loop through each cell in the table
 for row = 1:height(traits)
@@ -43,13 +43,13 @@ for row = 1:height(traits)
         cell_value = traits(row, col);
         % Check if the cell is empty (either NaN or empty string)
         if (isnumeric(cell_value) && isnan(cell_value)) || (ischar(cell_value) && isempty(cell_value))
-            empty_cells(row, col) = 0;
+            observations(row, col) = 0;
         end
     end
 end
 
-y = sum(empty_cells)
-x = 1:1:37
+y = sum(observations);
+x = 1:1:37;
 
 figure;
 bar(x,y)
@@ -64,59 +64,41 @@ end
 % Adjust x-axis limits to make sure all text is visible
 xlim([0 length(y) + 1]);
 
-%% graphs (wavelength part)
-clear("df1")
-clear("df2")
+%% Plotting all wavelengths for visualization purposes
+% Missing points included as NaN values
 
-df1 = readtable('data_part_1.csv', 'ReadVariableNames',true);
-df2 = readtable('data_part_2.csv', 'ReadVariableNames',true);
+df_wl = M_complete(:, 38:end);
+df_wl_1 = df_wl(:,1:951);
+df_wl_2 = df_wl(:,952:1321);
+df_wl_3 = df_wl(:,1322:1721);
+df_wl = [NaN(length(df_wl), 399),df_wl_1,...
+           NaN(length(df_wl),80), df_wl_2,...
+           NaN(length(df_wl),250), df_wl_3,...
+           NaN(length(df_wl),51)];
 
-df1_wl=df1(:,22:1742);
-df2_wl=df2(:,39:1759);
-%%
-df_wl=[df1_wl;df2_wl];
-df_wl=table2array(df_wl);
-%% add NaN columns where water absorption happens (1351–1430, 1801–2050 and 2451–2501 nm)
+x_vect = 1:width(df_wl);
+mean_vect = mean(df_wl);
+min_vect = min(df_wl);
+max_vect = max(df_wl);
 
-%% first bandwith
-col_nan=NaN(13295,1);
-
-for ii=1:80 % the 952 column should be the first NaN column
-    df_wl = [df_wl(:, 1:950+ii) col_nan df_wl(:, 951+ii:end)];
-end
-
-size(df_wl,2)
-
-%% second bandwith
-pos=1322+79-1;
-
-for ii=1:250 
-    df_wl = [df_wl(:, 1:pos+ii) col_nan df_wl(:, pos+ii+1:end)];
-end
-
-
-%%
-
-% substitute min and max with 99% quantiles
-mean_vect=(mean(df_wl));
-min_vect=prctile(df_wl,1);
-max_vect=prctile(df_wl,99);
-
-%%
-x_vect=linspace(400,2450,2051);
+figure;
 hold on;
-plot(x_vect,mean_vect,'DisplayName','mean');
-plot(x_vect, min_vect, 'DisplayName','1% percentile');
-plot(x_vect, max_vect, 'DisplayName','99% percentile')
+plot(mean_vect,'DisplayName','mean');
+plot(min_vect, 'DisplayName','minimum');
+plot(max_vect, 'DisplayName','maximum')
 hold off;
 
-xlabel('wavelength');
+title('Wavelength data')
+xlim([0, 2501])
+xlabel('Wavelength');
 ylabel('Reflectance');
 legend('show');
 grid on;
 
-%% boxplot
+%% Additional visualizations:
 
+% Boxplot of trait vars
+figure;
+boxplot(M_traits)
 
-
-
+% Corrplot is not possible for all response variables; there are too many
