@@ -102,5 +102,11 @@ figure;
 boxplot(M_traits)
 
 % Corrplot is not possible for all response variables; there are too many
+%% Matrix creations
+commonColumns = intersect(df1_orig.Properties.VariableNames, df2_orig.Properties.VariableNames);
 
+df1_common = df1_orig(:, commonColumns);
+df2_common = df2_orig(:, commonColumns);
+
+df_tot=[df1_common; df2_common];
 
