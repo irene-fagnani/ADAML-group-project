@@ -108,5 +108,24 @@ commonColumns = intersect(df1_orig.Properties.VariableNames, df2_orig.Properties
 df1_common = df1_orig(:, commonColumns);
 df2_common = df2_orig(:, commonColumns);
 
-df_tot=[df1_common; df2_common];
 
+df_tot = [df1_common; df2_common];
+df_totM = table2array([df1_common; df2_common]);
+
+Matrices = cell(20, 4);
+for i = 1:20
+    nans = isnan(df_totM(:,i));
+    X = df_totM(nans==0, 22:end);
+    Y = df_totM(nans==0, i);
+    X_nans = df_totM(nans, 22:end);
+
+    Matrices{i, 1} = commonColumns(i);
+    Matrices{i, 2} = zscore(X);
+    Matrices{i, 3} = zscore(Y);
+    Matrices{i, 4} = zscore(X_nans);
+end
+
+%% Visualizing of preprocessed data
+
+figure;
+boxplot(Matrices{1,3})
