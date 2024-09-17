@@ -113,19 +113,27 @@ df_tot = [df1_common; df2_common];
 df_totM = table2array([df1_common; df2_common]);
 
 Matrices = cell(20, 4);
+name_list=["Anth","Boron","C","Ca","Car","Cellulose","Chl","Copper","EWT","Fiber","LAI","Lignin","LMA","Magnesium","Manganese","N","NSC","Phosphorus","Potassium","Sulfur"];
 for i = 1:20
     nans = isnan(df_totM(:,i));
     X = df_totM(nans==0, 22:end);
     Y = df_totM(nans==0, i);
     X_nans = df_totM(nans, 22:end);
 
-    Matrices{i, 1} = commonColumns(i);
+    Matrices{i, 1} = name_list(i);
     Matrices{i, 2} = zscore(X);
     Matrices{i, 3} = zscore(Y);
     Matrices{i, 4} = zscore(X_nans);
 end
 
+
 %% Visualizing of preprocessed data
 
 figure;
-boxplot(Matrices{1,3})
+sgtitle("Box-plot of pre-processed data.")
+for ii=1:20
+    subplot(2,10,ii);
+    boxplot(Matrices{ii,3});
+    xlabel(Matrices{ii,1});
+    ylim([-2 14]);
+end
