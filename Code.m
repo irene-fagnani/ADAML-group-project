@@ -116,6 +116,8 @@ Matrices = cell(20, 4);
 name_list=["Anth","Boron","C","Ca","Car","Cellulose","Chl","Copper","EWT","Fiber","LAI","Lignin","LMA","Magnesium","Manganese","N","NSC","Phosphorus","Potassium","Sulfur"];
 for i = 1:20
     nans = isnan(df_totM(:,i));
+    idx=find(nans==0);
+    idx_miss=find(nans==1);
     X = df_totM(nans==0, 22:end);
     Y = df_totM(nans==0, i);
     X_nans = df_totM(nans, 22:end);
@@ -124,6 +126,8 @@ for i = 1:20
     Matrices{i, 2} = zscore(X);
     Matrices{i, 3} = zscore(Y);
     Matrices{i, 4} = zscore(X_nans);
+    Matrices{i,5}=idx; 
+    Matrices{i,6}=idx_miss; %indexes of missing values
 end
 
 
