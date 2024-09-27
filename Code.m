@@ -137,7 +137,7 @@ end
 
 figure;
 sgtitle("Box-plot of pre-processed data.")
-for ii=1:20
+for ii=1:size(Matrices,1)
     subplot(2,10,ii);
     boxplot(Matrices{ii,3});
     xlabel(Matrices{ii,1});
@@ -150,6 +150,97 @@ end
 
 %% PLS/PCA Model and Cross-Validation
 
+for kk=1:size(Matrices,1)
+% Into predictor variables and predicted variable
+
+X0 = Matrices{kk,2};
+Y0 = Matrices{kk,3};
+
+% Making division between calibration and validation
+nobs    = length(Y0);
+% We save 30% of the data for validation
+part    = cvpartition(nobs, 'HoldOut', 0.3);
+idxCal  = training(part);
+idxTest  = test(part);
+
+X = X0(idxCal, :);
+Y = Y0(idxCal);
+
+k = 5;
+cv = cvpartition(size(Y, 1), 'KFold', k);
+
+
+for i = 1:cv.NumTestSets
+
+    trainIdx = training(cv, i);
+    testIdx  = test(cv, i);
+
+    X_cal  = X(trainIdx, :);
+    Y_cal = Y(trainIdx, :);
+
+    X_val  = X(testIdx, :);
+    Y_val  = Y(testIdx, :);
+
+    % Center and Scale
+    [XCal, mu, sigma] = zscore(X_cal);
+    XVal = normalize(X_val, "center", mu, "scale", sigma);
+    YCal = Y_cal - mean(Y_cal);
+    YVal = Y_val - mean(Y_cal);
+
+    [P, T, latent] = pca(XCal, 'Centered', false, 'Economy', false);
+
+   
+
+    TSS = sum((YCal - mean(YCal)).^2);
+
+    [rows, ~] = size(XVal);
+
+    for j = 1:19
+
+        bPCR = [];
+        bPCR            = P(:,1:j) * regress(YCal, T(:,1:j));
+        bPCR            = [mean(YCal) - mean(XCal) * bPCR; bPCR];
+        YPredPCR        = [ones(rows,1) XVal] * bPCR;
+        PRESSPCR(i,j)   = sum((YPredPCR - YVal).^2);
+        RMSEPCR(i,j)    = rmse(YPredPCR, YVal);
+        Q2PCR(i,j)      = 1 - PRESSPCR(i,j)/TSS;
+
+        [~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, j);
+        YPredPLS        = [ones(rows,1) XVal] * bPLS;
+        PRESSPLS(i,j)   = sum((YPredPLS - YVal).^2);
+        Q2PLS(i,j)      = 1 - PRESSPLS(i,j)/TSS;
+        RMSEPLS(i,j)    = rmse(YPredPLS, YVal);
+
+    end
+
+end
+end
+
+%%
+Q2_CV_PCR = mean(Q2PCR);
+Q2_CV_PLS = mean(Q2PLS);
+
+PRESS_CV_PLS = mean(PRESSPLS);
+PRESS_CV_PCR = mean(PRESSPCR);
+
+RMSE_CV_PLS = mean(RMSEPLS);
+RMSE_CV_PCR = mean(RMSEPCR);
+
+figure;
+plot(Q2_CV_PLS);
+hold on;
+plot(Q2_CV_PCR);
+xlabel("No LVs in the model.")
+ylabel("Q^2_{CV}")
+legend(["PLS"; "PCR"])
+
+figure;
+plot(RMSE_CV_PLS);
+hold on;
+plot(RMSE_CV_PCR);
+xlabel("No LVs in the model.")
+ylabel("RMSE_{CV}")
+legend(["PLS"; "PCR"]);
 
 
 
