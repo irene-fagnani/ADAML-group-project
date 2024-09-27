@@ -145,10 +145,8 @@ end
 
 
 %Ekhtear
-% Applying Scaling (Z-score) on the Training Data
-% Storing mean and std of the training set
-[X_train_mean, X_train_std] = deal(mean(M_wl, 1), std(M_wl, 0, 1));
-X_train_scaled = (M_wl - X_train_mean) ./ X_train_std; % Standardized wavelength data
+% Standardizing and training data
+[X_train_scaled, X_train_mean, X_train_std] = zscore(M_wl);  % Using zscore for training data scaling as per feedback
 
-% Standardizing the trait data (if needed later...)
+% Standardize the trait data(if needed...)
 %Y_train_scaled = zscore(M_traits);
