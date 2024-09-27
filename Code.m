@@ -144,9 +144,28 @@ end
 
 
 
-%Ekhtear
+%%Ekhtear
 % Standardizing and training data
 [X_train_scaled, X_train_mean, X_train_std] = zscore(M_wl);  % Using zscore for training data scaling as per feedback
 
 % Standardize the trait data(if needed...)
-%Y_train_scaled = zscore(M_traits);
+% Y_train_scaled = zscore(M_traits);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%% Predict Missing Trait Values for New Data
+% normalize to scale new data using the saved mean and std
+% X_new = normalize(M_wl, 'center', X_train_mean, 'scale', X_train_std);
