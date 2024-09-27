@@ -119,15 +119,17 @@ for i = 1:20
     idx=find(nans==0);
     idx_miss=find(nans==1);
     X = df_totM(nans==0, 22:end);
+    [X_bar,mu,sigma]=zscore(X);
+    X_new=normalize(X,'center',mu,'scale',sigma);
     Y = df_totM(nans==0, i);
     X_nans = df_totM(nans, 22:end);
 
     Matrices{i, 1} = name_list(i);
-    Matrices{i, 2} = zscore(X);
+    Matrices{i, 2} = zscore(X_new);
     Matrices{i, 3} = zscore(Y);
     Matrices{i, 4} = zscore(X_nans);
-    Matrices{i,5}=idx; 
-    Matrices{i,6}=idx_miss; %indexes of missing values
+    Matrices{i, 5}=idx; 
+    Matrices{i, 6}=idx_miss; %indexes of missing values
 end
 
 
@@ -147,11 +149,7 @@ end
 %%Ekhtear
 
 %% PLS/PCA Model and Cross-Validation
-% Standardizing and training data
-[X_train_scaled, X_train_mean, X_train_std] = zscore(M_wl);  % Using zscore for training data scaling as per feedback
 
-% Standardize the trait data(if needed...)
-% Y_train_scaled = zscore(M_traits);
 
 
 
