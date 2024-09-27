@@ -145,6 +145,8 @@ end
 
 
 %%Ekhtear
+
+%% PLS/PCA Model and Cross-Validation
 % Standardizing and training data
 [X_train_scaled, X_train_mean, X_train_std] = zscore(M_wl);  % Using zscore for training data scaling as per feedback
 
