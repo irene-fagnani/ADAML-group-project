@@ -141,3 +141,14 @@ for ii=1:20
     xlabel(Matrices{ii,1});
     ylim([-2 14]);
 end
+
+
+
+%Ekhtear
+% Applying Scaling (Z-score) on the Training Data
+% Storing mean and std of the training set
+[X_train_mean, X_train_std] = deal(mean(M_wl, 1), std(M_wl, 0, 1));
+X_train_scaled = (M_wl - X_train_mean) ./ X_train_std; % Standardized wavelength data
+
+% Standardize the trait data (if needed later...)
+%Y_train_scaled = zscore(M_traits);
