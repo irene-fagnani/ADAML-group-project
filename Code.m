@@ -150,5 +150,5 @@ end
 [X_train_mean, X_train_std] = deal(mean(M_wl, 1), std(M_wl, 0, 1));
 X_train_scaled = (M_wl - X_train_mean) ./ X_train_std; % Standardized wavelength data
 
-% Standardize the trait data (if needed later...)
+% Standardizing the trait data (if needed later...)
 %Y_train_scaled = zscore(M_traits);
