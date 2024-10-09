@@ -155,6 +155,7 @@ clc
 nLV = 30;
 k = 5;
 
+LV_vector=zeros(20,1); % will contain the number of latent variables for which Q2 is maximum and RMSE < 0.1
 for kk=2
     % Into predictor variables and predicted variable
 
@@ -222,14 +223,24 @@ for kk=2
             PRESSPLS(i,j)   = sum((YPredPLS - YVal).^2);
             RMSEPLS(i,j)    = rmse(YPredPLS, YVal);
             Q2PLS(i,j)      = 1 - PRESSPLS(i,j)/TSS;
+
         end
+
     end
     disp(['Training for trait ', num2str(kk), ' completed.'])
     Q2_CV_PCR = mean(Q2PCR);
     Q2_CV_PLS = mean(Q2PLS);
+   
 
     RMSE_CV_PLS = mean(RMSEPLS);
     RMSE_CV_PCR = mean(RMSEPCR);
+
+    % save latent variables with RMSE<0.1 and max Q2
+    for ii=1:nLV
+     if(RMSE_CV_PCR(ii)<0.1 & Q2_CV_PLS(ii)==max(Q2_CV_PLS))
+          LV_vector(kk)=ii;
+     end
+    end
 
     figure;
     plot(Q2_CV_PLS);
