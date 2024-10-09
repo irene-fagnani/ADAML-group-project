@@ -152,11 +152,10 @@ end
 
 %% PLS/PCR Model and k-fold Cross-Validation
 clc
-nLV = 30;
+nLV = 50;
 k = 5;
 
-LV_vector=zeros(20,1); % will contain the number of latent variables for which Q2 is maximum and RMSE < 0.1
-for kk=2
+for kk=1:20
     % Into predictor variables and predicted variable
 
     X0 = Matrices{kk,2};
@@ -210,7 +209,7 @@ for kk=2
         
         
         for j = 1:nLV
-            disp(['Fold ', num2str(i), ',  part ', num2str(j)])
+            disp(['Trait ', num2str(kk), ', fold ', num2str(i), ',  part ', num2str(j)])
             bPCR(1:end-1)        = P(:,1:j) * regress(YCal, T(:,1:j));
             bPCR(end)            = mean(YCal) - mean(XCal) * bPCR(1:end-1);
             YPredPCR        = [ones(rows,1) XVal] * bPCR;
@@ -223,42 +222,34 @@ for kk=2
             PRESSPLS(i,j)   = sum((YPredPLS - YVal).^2);
             RMSEPLS(i,j)    = rmse(YPredPLS, YVal);
             Q2PLS(i,j)      = 1 - PRESSPLS(i,j)/TSS;
-
         end
-
     end
     disp(['Training for trait ', num2str(kk), ' completed.'])
-    Q2_CV_PCR = mean(Q2PCR);
     Q2_CV_PLS = mean(Q2PLS);
-   
-
+    Q2_CV_PCR = mean(Q2PCR);
+    
     RMSE_CV_PLS = mean(RMSEPLS);
     RMSE_CV_PCR = mean(RMSEPCR);
-
-    % save latent variables with RMSE<0.1 and max Q2
-    for ii=1:nLV
-     if(RMSE_CV_PCR(ii)<0.1 & Q2_CV_PLS(ii)==max(Q2_CV_PLS))
-          LV_vector(kk)=ii;
-     end
-    end
-
-    figure;
-    plot(Q2_CV_PLS);
-    hold on;
-    plot(Q2_CV_PCR);
-    xlabel("No LVs in the model.")
-    ylabel("Q^2_{CV}")
-    legend(["PLS"; "PCR"])
-
-    figure;
-    plot(RMSE_CV_PLS);
-    hold on;
-    plot(RMSE_CV_PCR);
-    xlabel("No LVs in the model.")
-    ylabel("RMSE_{CV}")
-    legend(["PLS"; "PCR"]);
+    
+    Opt_noLV = min(find(RMSE_CV_PLS == min(RMSE_CV_PLS)), find(Q2_CV_PLS == max(Q2_CV_PLS)))
+    Opt_noComp = min(find(RMSE_CV_PCR == min(RMSE_CV_PCR)), find(Q2_CV_PCR == max(Q2_CV_PCR)))
+  
+    % figure;
+    % plot(Q2_CV_PLS);
+    % hold on;
+    % plot(Q2_CV_PCR);
+    % xlabel("No LVs in the model.")
+    % ylabel("Q^2_{CV}")
+    % legend(["PLS"; "PCR"])
+    % 
+    % figure;
+    % plot(RMSE_CV_PLS);
+    % hold on;
+    % plot(RMSE_CV_PCR);
+    % xlabel("No LVs in the model.")
+    % ylabel("RMSE_{CV}")
+    % legend(["PLS"; "PCR"]);
 end
-
 
 
 %% Predict Missing Trait Values for New Data
