@@ -128,13 +128,16 @@ for i = 1:20
     X_nans = normalize(X_nans,'center',mu,'scale',sigma);
     
     Matrices{i, 1} = name_list(i);
-    Matrices{i, 2} = X_bar; % X with found Y
+    Matrices{i, 2} = X; % X with found Y
     Matrices{i, 3} = Y; % Found Y
     Matrices{i, 4} = X_nans; % S
-    Matrices{i, 5}=idx;
+    Matrices{i, 5}=idx; 
     Matrices{i, 6}=idx_miss; %indexes of missing values
 end
-
+%%
+clearvars -except Matrices
+close all
+clc
 
 %% Visualizing of preprocessed data
 
@@ -144,234 +147,106 @@ for ii=1:size(Matrices,1)
     subplot(2,10,ii);
     boxplot(Matrices{ii,3});
     xlabel(Matrices{ii,1});
-    ylim([-2 14]);
 end
-%%
-clearvars -except Matrices
-close all
+
+
+%% PLS/PCR Model and k-fold Cross-Validation
 clc
-%% R^2 method
-noLVs=10;
-%for ii = 1:20 try only with firat trait
-    XTrain=Matrices{1,2};
-    YTrain=Matrices{1,3};
-    [row, col] = size(XTrain);
-    wavelength = linspace(250,2500,col);
-    rng("default");
-    c       = cvpartition(row, 'HoldOut', 0.2);
-    idxCal  = training(c);
-    idxTest = test(c);
+nLV = 30;
+k = 5;
 
-    YCal    = YTrain(idxCal);
-    XCal    = XTrain(idxCal,:);
-    YTest   = YTrain(idxTest);
-    XTest   = XTrain(idxTest,:);
+for kk=2
+    % Into predictor variables and predicted variable
 
-    [Yc, muY, stdY] = zscore(YCal);
-    [Xc, muX, stdX] = zscore(XCal);
-    Yt  =  normalize(YTest, "center", muY, "scale", stdY);
-    Xt  =  normalize(XTest, "center", muX, "scale", stdX);
+    X0 = Matrices{kk,2};
+    Y0 = Matrices{kk,3};
 
-   % [P, Q, T, U, B, var, mse, stats] = plsregress(Xc, Yc, 100, 'cv', 10);
+    % Making division between calibration and validation
+    nobs    = length(Y0);
+    
+    % We save 30% of the data for validation
+    part    = cvpartition(nobs, 'HoldOut', 0.3);
+    idxCal  = training(part);
+    idxTest  = test(part);
 
-    %figure;
-    %plot(1:101, mse(2,:))
-    %xlabel("no LVs.")
-    %ylabel("MSE [y]")
-    %noLVs = 10;
-    %find(mse(2,:)==min(mse(2,:)))
+    X = X0(idxCal, :);
+    Y = Y0(idxCal);
 
-    [P, Q, T, U, B, var, mse, stats] = plsregress(Xc, Yc, noLVs, 'cv', 10);
+    cv = cvpartition(size(Y, 1), 'KFold', k);
+    disp(['Training model for trait ', num2str(kk)])
+    nCols = size(X0,2)+1;
+
+    bPCR = zeros(nCols, 1);
+    PRESSPCR = zeros(k, nLV);
+    RMSEPCR = zeros(k, nLV);
+    Q2PCR = zeros(k, nLV);
+         
+    PRESSPLS = zeros(k, nLV);
+    RMSEPLS = zeros(k, nLV);
+    Q2PLS = zeros(k, nLV);
+
+    for i = 1:k
+        trainIdx = training(cv, i);
+        testIdx  = test(cv, i);
+
+        X_cal  = X(trainIdx, :);
+        Y_cal = Y(trainIdx, :);
+
+        X_val  = X(testIdx, :);
+        Y_val  = Y(testIdx, :);
+
+        % Center and Scale
+        [XCal, mu, sigma] = zscore(X_cal);
+        XVal = normalize(X_val, "center", mu, "scale", sigma);
+        YCal = Y_cal - mean(Y_cal);
+        YVal = Y_val - mean(Y_cal);
+
+        [P, T, latent] = pca(XCal, 'Centered', false, 'Economy', false);
+
+        TSS = sum((YCal - mean(YCal)).^2);
+
+        [rows, ~] = size(XVal);
+        
+        
+        for j = 1:nLV
+            disp(['Fold ', num2str(i), ',  part ', num2str(j)])
+            bPCR(1:end-1)        = P(:,1:j) * regress(YCal, T(:,1:j));
+            bPCR(end)            = mean(YCal) - mean(XCal) * bPCR(1:end-1);
+            YPredPCR        = [ones(rows,1) XVal] * bPCR;
+            PRESSPCR(i,j)   = sum((YPredPCR - YVal).^2);
+            RMSEPCR(i,j)    = rmse(YPredPCR, YVal);
+            Q2PCR(i,j)      = 1 - PRESSPCR(i,j)/TSS;
+
+            [~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, j);
+            YPredPLS        = [ones(rows,1) XVal] * bPLS;
+            PRESSPLS(i,j)   = sum((YPredPLS - YVal).^2);
+            RMSEPLS(i,j)    = rmse(YPredPLS, YVal);
+            Q2PLS(i,j)      = 1 - PRESSPLS(i,j)/TSS;
+        end
+    end
+    disp(['Training for trait ', num2str(kk), ' completed.'])
+    Q2_CV_PCR = mean(Q2PCR);
+    Q2_CV_PLS = mean(Q2PLS);
+
+    RMSE_CV_PLS = mean(RMSEPLS);
+    RMSE_CV_PCR = mean(RMSEPCR);
 
     figure;
-    bar(wavelength, B(2:end));
-    xlabel("wavelength [nm]");
-    ylabel("B_{PLS}")
+    plot(Q2_CV_PLS);
+    hold on;
+    plot(Q2_CV_PCR);
+    xlabel("No LVs in the model.")
+    ylabel("Q^2_{CV}")
+    legend(["PLS"; "PCR"])
 
-    [sorted, idxSortedB] = sort(abs(B(2:end)), 'descend');
-    [n, ~] = size(Xt);
-
-    TSS = sum((Yc - mean(Yc)).^2);
- 
-    % R^2 method
-    XCal = Xc;  
-    y    = Yc;
-
-    noVars = size(Xc, 2);
-
-    correlationCoefficients = zeros(noVars, 1);
-
-    for i = 1:noVars
-        corrMatrix = corrcoef(XCal(:, i), y);
-        correlationCoefficients(i) = abs(corrMatrix(1, 2)); % Take the absolute of the correlation
-    end
-
-    [sortedMatrix, indicesSorted] = sort(correlationCoefficients, 'descend');
-
-% We have to start the PLS model with something, so we add 
-% the three most correlated vars;
-    extracted = indicesSorted(1:3)';
-
-    originalVars = 1:col;
-    subplot(2,2,1);
-    plot(wavelength, correlationCoefficients, '-o');
-    xlabel('Wavelength');
-    ylabel('Correlation Coefficient with y');
-    title('Correlation Coefficients Between X Variables and y');
-    R2 = [];
-
-    originalVars(extracted) = [];
-    noM = 100;
-    R2vector = [];
-    Q2 = [];
-    [row, col] = size(Xc);
-    for m = 1:noM
-         R2 = [];
-
-    for i = 1:length(originalVars)
-
-        if m < 3
-            [~, ~, ~, ~, BETA] = plsregress(XCal(:,[extracted, originalVars(i)]), y, 2);
-        elseif m >= 3 && m < 6
-            [~, ~, ~, ~, BETA] = plsregress(XCal(:,[extracted, originalVars(i)]), y, 3);
-        else
-            [~, ~, ~, ~, BETA] = plsregress(XCal(:,[extracted, originalVars(i)]), y, 5);
-        end
-        YPredC = [ones(row,1) Xc(:,[extracted, originalVars(i)])]*BETA;
-        RSS = sum((YPredC - Yc).^2);
-        R2(i) = 1 -  RSS/TSS;
-
-    end   
-    [~, idxR] = max(R2);
-
-    R2vector(m) = max(R2);
-
-    extracted = [extracted, originalVars(idxR)];
-    originalVars(idxR) = [];
-    
-    YPred = [ones(n,1) Xt(:,extracted)]*BETA;
-    PRESS = sum((YPred - Yt).^2);
-    Q2(m) = 1 - PRESS/TSS;  
+    figure;
+    plot(RMSE_CV_PLS);
+    hold on;
+    plot(RMSE_CV_PCR);
+    xlabel("No LVs in the model.")
+    ylabel("RMSE_{CV}")
+    legend(["PLS"; "PCR"]);
 end
-
-
-subplot(2,2,2);
-
-
-plot(R2vector, 'LineWidth', 2, 'Color', [139, 0, 0]/255); % Dark cherry color
-xlabel('No. of Added Variables');
-ylabel('R^2');
-
-% Find the maximum Y value and its corresponding X index
-[maxY, idx] = max(R2vector);
-
-
-hold on; 
-plot(idx, maxY, 'p', 'MarkerSize', 12, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', [139, 0, 0]/255);
-hold off; 
-
-text(idx, maxY, sprintf(' Max: %.2f', maxY), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
-
-subplot(2,2,3);
-plot(Q2, 'LineWidth', 2, 'Color', [139, 0, 0]/255); % Dark cherry color
-xlabel('No. of Added Variables');
-ylabel('Q^2');
-%end
-%% PLS/PCA Model and Cross-Validation
-
-%for kk=1:size(Matrices,1)
-% Into predictor variables and predicted variable
-
-%X0 = Matrices{kk,2};
-%Y0 = Matrices{kk,3};
-
-% Making division between calibration and validation
-%nobs    = length(Y0);
-% We save 30% of the data for validation
-%part    = cvpartition(nobs, 'HoldOut', 0.3);
-%idxCal  = training(part);
-%idxTest  = test(part);
-
-%X = X0(idxCal, :);
-%Y = Y0(idxCal);
-
-%k = 5;
-%cv = cvpartition(size(Y, 1), 'KFold', k);
-
-
-%for i = 1:cv.NumTestSets
-
- %   trainIdx = training(cv, i);
-  %  testIdx  = test(cv, i);
-
-%    X_cal  = X(trainIdx, :);
- %   Y_cal = Y(trainIdx, :);
-
-  %  X_val  = X(testIdx, :);
-   % Y_val  = Y(testIdx, :);
-
-    % Center and Scale
-    %[XCal, mu, sigma] = zscore(X_cal);
-    %XVal = normalize(X_val, "center", mu, "scale", sigma);
-    %YCal = Y_cal - mean(Y_cal);
-    %YVal = Y_val - mean(Y_cal);
-
-    %[P, T, latent] = pca(XCal, 'Centered', false, 'Economy', false);
-
-   
-
-    %TSS = sum((YCal - mean(YCal)).^2);
-
-    %[rows, ~] = size(XVal);
-
-    %for j = 1:19
-
-     %   bPCR = [];
-     %   bPCR            = P(:,1:j) * regress(YCal, T(:,1:j));
-     %   bPCR            = [mean(YCal) - mean(XCal) * bPCR; bPCR];
-     %   YPredPCR        = [ones(rows,1) XVal] * bPCR;
-     %   PRESSPCR(i,j)   = sum((YPredPCR - YVal).^2);
-     %   RMSEPCR(i,j)    = rmse(YPredPCR, YVal);
-     %   Q2PCR(i,j)      = 1 - PRESSPCR(i,j)/TSS;
-
-       % [~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, j);
-       % YPredPLS        = [ones(rows,1) XVal] * bPLS;
-       % PRESSPLS(i,j)   = sum((YPredPLS - YVal).^2);
-       % Q2PLS(i,j)      = 1 - PRESSPLS(i,j)/TSS;
-       % RMSEPLS(i,j)    = rmse(YPredPLS, YVal);
-
-   % end
-
-%end
-%end
-
-%%
-Q2_CV_PCR = mean(Q2PCR);
-Q2_CV_PLS = mean(Q2PLS);
-
-PRESS_CV_PLS = mean(PRESSPLS);
-PRESS_CV_PCR = mean(PRESSPCR);
-
-RMSE_CV_PLS = mean(RMSEPLS);
-RMSE_CV_PCR = mean(RMSEPCR);
-
-figure;
-plot(Q2_CV_PLS);
-hold on;
-plot(Q2_CV_PCR);
-xlabel("No LVs in the model.")
-ylabel("Q^2_{CV}")
-legend(["PLS"; "PCR"])
-
-figure;
-plot(RMSE_CV_PLS);
-hold on;
-plot(RMSE_CV_PCR);
-xlabel("No LVs in the model.")
-ylabel("RMSE_{CV}")
-legend(["PLS"; "PCR"]);
-
-
 
 
 
