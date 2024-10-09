@@ -250,7 +250,62 @@ for kk=1:20
     % ylabel("RMSE_{CV}")
     % legend(["PLS"; "PCR"]);
 end
+%% Get the coefficients beta
+noPCsPCR =  Opt_noComp;
+noPCsPLS =   Opt_noLV;
 
+[P, T, latent] = pca(XCal, 'Centered', false, 'Economy', false);
+% Re-calibrate the models with the combined cal-val partition
+bPCR = [];
+bPCR = P(:,1:noPCsPCR) * regress(YCal, T(:,1:noPCsPCR)); 
+bPCR = [mean(YCal) - mean(XCal) * bPCR; bPCR]; % Add intercept.
+     
+[~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, noPCsPLS);
+
+%figure;
+%betas = [bPLS(2:end), bPCR(2:end)];
+%bar(betas);
+%legend(["PLS Regression Coefficients", "PCR Regression Coefficients"]);
+
+
+%% predict
+
+% for kk = 1:20 
+[row, col] = size(XVal);
+YTestPredPLS  = [ones(row, 1) XVal] * bPLS;
+YTestPredPCR  = [ones(row, 1) XVal] * bPCR;
+% end
+
+% subplot(1,2,1);
+% scatter(model(1).YTest, YTestPredPLS, 'filled');
+% xlabel("Age [normalized]");
+% ylabel("Estimated Age [normalized]");
+% title("PLS Estimation");
+
+% subplot(1,2,2);
+% scatter(model(1).YTest, YTestPredPCR, 'filled');
+% xlabel("Age [normalized]");
+% ylabel("Estimated Age [normalized]");
+% title("PCR Estimation");
+
+% end
+
+%% Residuals
+% resid
+residPLS = abs(YVal - YTestPredPLS);
+residPCR = abs(YVal - YTestPredPCR);
+
+% subplot(1,2,1);
+% scatter(model(1).YTest, residPLS, 'filled');
+% xlabel("Age [normalized]");
+% ylabel("Estimate Age error");
+% title("PLS Estimation Residuals");
+
+% subplot(1,2,2);
+% scatter(model(1).YTest, residPCR, 'filled');
+% xlabel("Age [normalized]");
+% ylabel("Estimate Age error");
+% title("PCR Estimation Residuals");
 
 %% Predict Missing Trait Values for New Data
 % normalize to scale new data using the saved mean and std
