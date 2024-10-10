@@ -155,7 +155,8 @@ clc
 nLV = 50;
 k = 5;
 
-for kk=1:20
+for kk=1
+%for kk=1:20
     % Into predictor variables and predicted variable
 
     X0 = Matrices{kk,2};
@@ -231,8 +232,8 @@ for kk=1:20
     RMSE_CV_PLS = mean(RMSEPLS);
     RMSE_CV_PCR = mean(RMSEPCR);
     
-    Opt_noLV = min(find(RMSE_CV_PLS == min(RMSE_CV_PLS)), find(Q2_CV_PLS == max(Q2_CV_PLS)))
-    Opt_noComp = min(find(RMSE_CV_PCR == min(RMSE_CV_PCR)), find(Q2_CV_PCR == max(Q2_CV_PCR)))
+    Opt_noLV = min(find(RMSE_CV_PLS == min(RMSE_CV_PLS)), find(Q2_CV_PLS == max(Q2_CV_PLS)));
+    Opt_noComp = min(find(RMSE_CV_PCR == min(RMSE_CV_PCR)), find(Q2_CV_PCR == max(Q2_CV_PCR)));
   
     % figure;
     % plot(Q2_CV_PLS);
@@ -251,9 +252,17 @@ for kk=1:20
     % legend(["PLS"; "PCR"]);
 end
 %% Get the coefficients beta
-noPCsPCR =  Opt_noComp;
-noPCsPLS =   Opt_noLV;
+%noPCsPCR =  Opt_noComp;
+%noPCsPLS =   Opt_noLV;
 
+noPCsPCR =  10;
+noPCsPLS =   15;
+
+% considering XCal all the Matrices{kk,2} and XVal the Matrices{kk,4}
+kk=1;
+% for kk=1:20
+XCal=Matrices{kk,2};
+YCal=Matrices{kk,3};
 [P, T, latent] = pca(XCal, 'Centered', false, 'Economy', false);
 % Re-calibrate the models with the combined cal-val partition
 bPCR = [];
@@ -262,18 +271,22 @@ bPCR = [mean(YCal) - mean(XCal) * bPCR; bPCR]; % Add intercept.
      
 [~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, noPCsPLS);
 
-%figure;
-%betas = [bPLS(2:end), bPCR(2:end)];
-%bar(betas);
-%legend(["PLS Regression Coefficients", "PCR Regression Coefficients"]);
-
+figure;
+betas = [bPLS(2:end), bPCR(2:end)];
+bar(betas);
+legend(["PLS Regression Coefficients", "PCR Regression Coefficients"]);
+%end
 
 %% predict
 
+% considering XCal all the Matrices{kk,2} and XVal the Matrices{kk,4}
+% predict the traits values we don't have.
+
 % for kk = 1:20 
-[row, col] = size(XVal);
-YTestPredPLS  = [ones(row, 1) XVal] * bPLS;
-YTestPredPCR  = [ones(row, 1) XVal] * bPCR;
+ XVal=Matrices{kk,4};
+ [row, col] = size(XVal);
+ YTestPredPLS  = [ones(row, 1) XVal] * bPLS;
+ YTestPredPCR  = [ones(row, 1) XVal] * bPCR;
 % end
 
 % subplot(1,2,1);
