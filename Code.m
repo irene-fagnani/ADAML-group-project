@@ -342,3 +342,137 @@ residPCR = abs(YVal - YTestPredPCR);
 %% Predict Missing Trait Values for New Data
 % normalize to scale new data using the saved mean and std
 % X_new = normalize(M_wl, 'center', X_train_mean, 'scale', X_train_std);
+
+
+
+
+%%----XX----%%
+%% Initialize variables for storing model performance
+% nLV = 50; % Max number of latent variables to test
+% k = 5; % Number of folds for cross-validation
+% bestModels = cell(20, 4); % Store best model results for each trait.
+% 
+% % Loop through each trait
+% for kk = 1:20
+%     X0 = Matrices{kk, 2};
+%     Y0 = Matrices{kk, 3};
+%     
+%     % Create a holdout partition for validation (30%)
+%     part = cvpartition(length(Y0), 'HoldOut', 0.3);
+%     idxCal = training(part);
+%     idxTest = test(part);
+% 
+%     % Define training and test sets
+%     X = X0(idxCal, :);
+%     Y = Y0(idxCal);
+%     
+%     % Setup cross-validation
+%     cv = cvpartition(size(Y, 1), 'KFold', k);
+%     disp(['Training model for trait ', name_list(kk)])
+%     
+%     % Initialize matrices for storing errors and performance metrics
+%     PRESSPLS = zeros(k, nLV);
+%     PRESSPCR = zeros(k, nLV);
+%     RMSEPLS = zeros(k, nLV);
+%     RMSEPCR = zeros(k, nLV);
+%     Q2PLS = zeros(k, nLV);
+%     Q2PCR = zeros(k, nLV);
+% 
+%     for i = 1:k % Loop over each fold for cross-validation
+%         trainIdx = training(cv, i);
+%         testIdx = test(cv, i);
+% 
+%         X_cal = X(trainIdx, :);
+%         Y_cal = Y(trainIdx);
+%         X_val = X(testIdx, :);
+%         Y_val = Y(testIdx);
+%         
+%         % Center and scale training data
+%         [XCal, mu, sigma] = zscore(X_cal);
+%         XVal = normalize(X_val, "center", mu, "scale", sigma);
+%         YCal = Y_cal - mean(Y_cal);
+%         YVal = Y_val - mean(Y_cal);
+%         
+%         [P, T, latent] = pca(XCal, 'Centered', false, 'Economy', false);
+%         TSS = sum((YCal - mean(YCal)).^2);
+% 
+%         for j = 1:nLV
+%             % PCR model
+%             bPCR = P(:, 1:j) * regress(YCal, T(:, 1:j));
+%             bPCR = [mean(YCal) - mean(XCal) * bPCR; bPCR];
+%             YPredPCR = [ones(size(XVal, 1), 1), XVal] * bPCR;
+%             PRESSPCR(i, j) = sum((YPredPCR - YVal).^2);
+%             RMSEPCR(i, j) = sqrt(mean((YPredPCR - YVal).^2));
+%             Q2PCR(i, j) = 1 - PRESSPCR(i, j) / TSS;
+%             
+%             % PLS model
+%             [~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, j);
+%             YPredPLS = [ones(size(XVal, 1), 1), XVal] * bPLS;
+%             PRESSPLS(i, j) = sum((YPredPLS - YVal).^2);
+%             RMSEPLS(i, j) = sqrt(mean((YPredPLS - YVal).^2));
+%             Q2PLS(i, j) = 1 - PRESSPLS(i, j) / TSS;
+%         end
+%     end
+% 
+%     % Calculate average RMSE and Q^2 across folds
+%     meanRMSE_PCR = mean(RMSEPCR);
+%     meanQ2_PCR = mean(Q2PCR);
+%     meanRMSE_PLS = mean(RMSEPLS);
+%     meanQ2_PLS = mean(Q2PLS);
+%     
+%     % Determine best number of components and corresponding model
+%     [minRMSE_PCR, idx_PCR] = min(meanRMSE_PCR);
+%     [maxQ2_PCR, ~] = max(meanQ2_PCR);
+%     [minRMSE_PLS, idx_PLS] = min(meanRMSE_PLS);
+%     [maxQ2_PLS, ~] = max(meanQ2_PLS);
+% 
+%     % Compare models and select the one with better metrics
+%     if minRMSE_PLS <= minRMSE_PCR && meanQ2_PLS(idx_PLS) >= meanQ2_PCR(idx_PCR)
+%         bestModel = 'PLS';
+%         bestRMSE = minRMSE_PLS;
+%         bestQ2 = meanQ2_PLS(idx_PLS);
+%     else
+%         bestModel = 'PCR';
+%         bestRMSE = minRMSE_PCR;
+%         bestQ2 = meanQ2_PCR(idx_PCR);
+%     end
+%     
+%     % Store the selected model information
+%     bestModels{kk, 1} = name_list(kk);
+%     bestModels{kk, 2} = bestModel;
+%     bestModels{kk, 3} = bestRMSE;
+%     bestModels{kk, 4} = bestQ2;
+% end
+% 
+% % Display the selected best models for each trait
+% disp('Best models for each trait:');
+% disp(cell2table(bestModels, 'VariableNames', {'Trait', 'BestModel', 'BestRMSE', 'BestQ2'}));
+% 
+% %% Final Predictions for Missing Values using the Selected Models
+% for kk = 1:20
+%     modelType = bestModels{kk, 2};
+%     XCal = Matrices{kk, 2};
+%     YCal = Matrices{kk, 3};
+%     XVal = Matrices{kk, 4};
+% 
+%     % Center and scale data using the training set mean and std.
+%     [XCal, mu, sigma] = zscore(XCal);
+%     XVal = normalize(XVal, 'center', mu, 'scale', sigma);
+%     
+%     if strcmp(modelType, 'PLS')
+%         [~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, idx_PLS);
+%         YPred = [ones(size(XVal, 1), 1), XVal] * bPLS; % Predict using PLS.
+%     else
+%         [P, T, ~] = pca(XCal, 'Centered', false, 'Economy', false);
+%         bPCR = P(:, 1:idx_PCR) * regress(YCal - mean(YCal), T(:, 1:idx_PCR));
+%         bPCR = [mean(YCal) - mean(XCal) * bPCR; bPCR];
+%         YPred = [ones(size(XVal, 1), 1), XVal] * bPCR; % Predict using PCR.
+%     end
+% 
+%     % Store or visualize the predicted values as needed.
+%     disp(['Predictions for missing values for trait ', name_list(kk), ':']);
+%     disp(YPred);
+% end
+
+
+%%----XX----%%
