@@ -130,12 +130,12 @@ for i = 1:20
     Matrices{i, 1} = name_list(i);
     Matrices{i, 2} = X; % X with found Y
     Matrices{i, 3} = Y; % Found Y
-    Matrices{i, 4} = X_nans; % S
-    Matrices{i, 5}=idx; 
-    Matrices{i, 6}=idx_miss; %indexes of missing values
+    Matrices{i, 4} = X_nans; % Scaled and Centered missing y X-values
+    Matrices{i, 6} = idx; % Indexes of found values
+    Matrices{i, 7} = idx_miss; %indexes of missing values
 end
-%%
-clearvars -except Matrices
+
+clearvars -except Matrices name_list
 close all
 clc
 
@@ -154,11 +154,10 @@ end
 clc
 nLV = 50;
 k = 5;
+bestModels = cell(20, 4); % Store best model results for each trait.
 
-for kk=1
-%for kk=1:20
+for kk=1:length(Matrices)
     % Into predictor variables and predicted variable
-
     X0 = Matrices{kk,2};
     Y0 = Matrices{kk,3};
 
@@ -213,16 +212,16 @@ for kk=1
             disp(['Trait ', num2str(kk), ', fold ', num2str(i), ',  part ', num2str(j)])
             bPCR(1:end-1)        = P(:,1:j) * regress(YCal, T(:,1:j));
             bPCR(end)            = mean(YCal) - mean(XCal) * bPCR(1:end-1);
-            YPredPCR        = [ones(rows,1) XVal] * bPCR;
-            PRESSPCR(i,j)   = sum((YPredPCR - YVal).^2);
-            RMSEPCR(i,j)    = rmse(YPredPCR, YVal);
-            Q2PCR(i,j)      = 1 - PRESSPCR(i,j)/TSS;
+            YPredPCR             = [ones(rows,1) XVal] * bPCR;
+            PRESSPCR(i,j)        = sum((YPredPCR - YVal).^2);
+            RMSEPCR(i,j)         = rmse(YPredPCR, YVal);
+            Q2PCR(i,j)           = 1 - PRESSPCR(i,j)/TSS;
 
-            [~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, j);
-            YPredPLS        = [ones(rows,1) XVal] * bPLS;
-            PRESSPLS(i,j)   = sum((YPredPLS - YVal).^2);
-            RMSEPLS(i,j)    = rmse(YPredPLS, YVal);
-            Q2PLS(i,j)      = 1 - PRESSPLS(i,j)/TSS;
+            [~, ~, ~, ~, bPLS]   = plsregress(XCal, YCal, j);
+            YPredPLS             = [ones(rows,1) XVal] * bPLS;
+            PRESSPLS(i,j)        = sum((YPredPLS - YVal).^2);
+            RMSEPLS(i,j)         = rmse(YPredPLS, YVal);
+            Q2PLS(i,j)           = 1 - PRESSPLS(i,j)/TSS;
         end
     end
     disp(['Training for trait ', num2str(kk), ' completed.'])
@@ -234,26 +233,78 @@ for kk=1
     
     % LV number selection
     Q2_max_PLS = max(Q2_CV_PLS);
-    Q2_mod_PLS = Q2_max_PLS * 0.03;
+    Q2_mod_PLS = Q2_max_PLS * 0.05;
     Q2_upper_lim_PLS = Q2_max_PLS - Q2_mod_PLS;
 
     RMSE_min_PLS = min(RMSE_CV_PLS);
-    RMSE_mod_PLS = RMSE_min_PLS * 0.03;
+    RMSE_mod_PLS = RMSE_min_PLS * 0.05;
     RMSE_lower_lim_PLS = RMSE_min_PLS + RMSE_mod_PLS;
 
     Opt_noLV = min(min(find(RMSE_CV_PLS < RMSE_lower_lim_PLS)), min(find(Q2_CV_PLS > Q2_upper_lim_PLS)));
 
     % Component number selection
     Q2_max_PCR = max(Q2_CV_PCR);
-    Q2_mod_PCR = Q2_max_PCR * 0.03;
+    Q2_mod_PCR = Q2_max_PCR * 0.05;
     Q2_upper_lim_PCR = Q2_max_PCR - Q2_mod_PCR;
 
     RMSE_min_PCR = min(RMSE_CV_PCR);
-    RMSE_mod_PCR = RMSE_min_PCR * 0.03;
+    RMSE_mod_PCR = RMSE_min_PCR * 0.05;
     RMSE_lower_lim_PCR = RMSE_min_PCR + RMSE_mod_PCR;
 
     Opt_noComp = min(min(find(RMSE_CV_PCR < RMSE_lower_lim_PCR)), min(find(Q2_CV_PCR > Q2_upper_lim_PCR)));
-  
+
+    if Q2_CV_PLS(Opt_noLV) > Q2_CV_PCR(Opt_noComp)
+
+        if RMSE_CV_PLS(Opt_noLV) < RMSE_CV_PCR(Opt_noComp)
+            bestModel = 'PLS';
+            bestRMSE = RMSE_CV_PLS(Opt_noLV);
+            bestQ2 = Q2_CV_PLS(Opt_noLV);
+
+        elseif abs(RMSE_CV_PLS(Opt_noLV) - RMSE_CV_PCR(Opt_noComp)) > 0.05
+            bestModel = 'PCR';
+            bestRMSE = RMSE_CV_PCR(Opt_noComp);
+            bestQ2 = Q2_CV_PCR(Opt_noComp);
+
+        end
+
+    else
+        if RMSE_CV_PLS(Opt_noLV) > RMSE_CV_PCR(Opt_noComp)
+            bestModel = 'PCR';
+            bestRMSE = RMSE_CV_PCR(Opt_noComp);
+            bestQ2 = Q2_CV_PCR(Opt_noComp);
+
+        elseif abs(RMSE_CV_PLS(Opt_noLV) - RMSE_CV_PCR(Opt_noComp)) > 0.05
+            bestModel = 'PLS';
+            bestRMSE = RMSE_CV_PLS(Opt_noLV);
+            bestQ2 = Q2_CV_PLS(Opt_noLV);
+
+        end
+    end
+    
+    % Final predictions
+    XPred = Matrices{kk, 4}; % X matrix with missing trait values
+    X0 = zscore(X0); % Scale X0 to match the previously scaled XPred
+
+    if strcmp(bestModel,'PLS')
+        % Predict using PLS
+        [~, ~, ~, ~, bPLS] = plsregress(X0, Y0, Opt_noLV);
+        YPred = [ones(size(XPred, 1), 1), XPred] * bPLS; % Predict using PLS.
+    else
+         % Predict using PCR.
+        [P, T, ~] = pca(X0, 'Centered', false, 'Economy', false);
+        bPCR = P(:, 1:Opt_noComp) * regress(Y0 - mean(Y0), T(:, 1:Opt_noComp));
+        bPCR = [mean(Y0) - mean(X0) * bPCR; bPCR];
+        YPred = [ones(size(XPred, 1), 1), XPred] * bPCR;
+    end
+    
+    Matrices{kk, 5} = YPred;
+
+    % Store the selected model information
+    bestModels{kk, 1} = name_list(kk);
+    bestModels{kk, 2} = bestModel;
+    bestModels{kk, 3} = bestRMSE;
+    bestModels{kk, 4} = bestQ2;
+
     % figure;
     % plot(Q2_CV_PLS);
     % hold on;
@@ -270,6 +321,25 @@ for kk=1
     % ylabel("RMSE_{CV}")
     % legend(["PLS"; "PCR"]);
 end
+
+% Display the selected best models for each trait
+disp('Best models for each trait:');
+disp(cell2table(bestModels, 'VariableNames', {'Trait', 'BestModel', 'BestRMSE', 'BestQ2'}));
+
+%% Recreate the table of traits and wavelengths
+trait_table = zeros(13295, 20);
+for i = 1:length(Matrices)
+    found_idx = Matrices{i, 6};
+    missing_idx = Matrices{i, 7};
+    trait_table(found_idx,i) = Matrices{i, 3};
+    trait_table(missing_idx,i) = Matrices{i, 5};
+end
+filename = "trait_matrix.mat";
+save(filename, 'trait_table')
+
+%%
+data_test = load('trait_matrix.mat')
+
 %% Get the coefficients beta
 %noPCsPCR =  Opt_noComp;
 %noPCsPLS =   Opt_noLV;
@@ -339,115 +409,6 @@ residPCR = abs(YVal - YTestPredPCR);
 % ylabel("Estimate Age error");
 % title("PCR Estimation Residuals");
 
-%% Predict Missing Trait Values for New Data
-% normalize to scale new data using the saved mean and std
-% X_new = normalize(M_wl, 'center', X_train_mean, 'scale', X_train_std);
-
-
-
-%%----XX----%%
-%% Initialize variables for storing model performance
-% nLV = 50; % Max number of latent variables to test
-% k = 5; % Number of folds for cross-validation
-% bestModels = cell(20, 4); % Store best model results for each trait.
-% 
-% % Loop through each trait
-% for kk = 1:20
-%     X0 = Matrices{kk, 2};
-%     Y0 = Matrices{kk, 3};
-%     
-%     % Create a holdout partition for validation (30%)
-%     part = cvpartition(length(Y0), 'HoldOut', 0.3);
-%     idxCal = training(part);
-%     idxTest = test(part);
-% 
-%     % Define training and test sets
-%     X = X0(idxCal, :);
-%     Y = Y0(idxCal);
-%     
-%     % Setup cross-validation
-%     cv = cvpartition(size(Y, 1), 'KFold', k);
-%     disp(['Training model for trait ', name_list(kk)])
-%     
-%     % Initialize matrices for storing errors and performance metrics
-%     PRESSPLS = zeros(k, nLV);
-%     PRESSPCR = zeros(k, nLV);
-%     RMSEPLS = zeros(k, nLV);
-%     RMSEPCR = zeros(k, nLV);
-%     Q2PLS = zeros(k, nLV);
-%     Q2PCR = zeros(k, nLV);
-% 
-%     for i = 1:k % Loop over each fold for cross-validation
-%         trainIdx = training(cv, i);
-%         testIdx = test(cv, i);
-% 
-%         X_cal = X(trainIdx, :);
-%         Y_cal = Y(trainIdx);
-%         X_val = X(testIdx, :);
-%         Y_val = Y(testIdx);
-%         
-%         % Center and scale training data
-%         [XCal, mu, sigma] = zscore(X_cal);
-%         XVal = normalize(X_val, "center", mu, "scale", sigma);
-%         YCal = Y_cal - mean(Y_cal);
-%         YVal = Y_val - mean(Y_cal);
-%         
-%         [P, T, latent] = pca(XCal, 'Centered', false, 'Economy', false);
-%         TSS = sum((YCal - mean(YCal)).^2);
-% 
-%         for j = 1:nLV
-%             % PCR model
-%             bPCR = P(:, 1:j) * regress(YCal, T(:, 1:j));
-%             bPCR = [mean(YCal) - mean(XCal) * bPCR; bPCR];
-%             YPredPCR = [ones(size(XVal, 1), 1), XVal] * bPCR;
-%             PRESSPCR(i, j) = sum((YPredPCR - YVal).^2);
-%             RMSEPCR(i, j) = sqrt(mean((YPredPCR - YVal).^2));
-%             Q2PCR(i, j) = 1 - PRESSPCR(i, j) / TSS;
-%             
-%             % PLS model
-%             [~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, j);
-%             YPredPLS = [ones(size(XVal, 1), 1), XVal] * bPLS;
-%             PRESSPLS(i, j) = sum((YPredPLS - YVal).^2);
-%             RMSEPLS(i, j) = sqrt(mean((YPredPLS - YVal).^2));
-%             Q2PLS(i, j) = 1 - PRESSPLS(i, j) / TSS;
-%         end
-%     end
-% 
-%     % Calculate average RMSE and Q^2 across folds
-%     meanRMSE_PCR = mean(RMSEPCR);
-%     meanQ2_PCR = mean(Q2PCR);
-%     meanRMSE_PLS = mean(RMSEPLS);
-%     meanQ2_PLS = mean(Q2PLS);
-%     
-%     % Determine best number of components and corresponding model
-%     [minRMSE_PCR, idx_PCR] = min(meanRMSE_PCR);
-%     [maxQ2_PCR, ~] = max(meanQ2_PCR);
-%     [minRMSE_PLS, idx_PLS] = min(meanRMSE_PLS);
-%     [maxQ2_PLS, ~] = max(meanQ2_PLS);
-% 
-%     % Compare models and select the one with better metrics
-%     if minRMSE_PLS <= minRMSE_PCR && meanQ2_PLS(idx_PLS) >= meanQ2_PCR(idx_PCR)
-%         bestModel = 'PLS';
-%         bestRMSE = minRMSE_PLS;
-%         bestQ2 = meanQ2_PLS(idx_PLS);
-%     else
-%         bestModel = 'PCR';
-%         bestRMSE = minRMSE_PCR;
-%         bestQ2 = meanQ2_PCR(idx_PCR);
-%     end
-%     
-%     % Store the selected model information
-%     bestModels{kk, 1} = name_list(kk);
-%     bestModels{kk, 2} = bestModel;
-%     bestModels{kk, 3} = bestRMSE;
-%     bestModels{kk, 4} = bestQ2;
-% end
-% 
-% % Display the selected best models for each trait
-% disp('Best models for each trait:');
-% disp(cell2table(bestModels, 'VariableNames', {'Trait', 'BestModel', 'BestRMSE', 'BestQ2'}));
-% 
-%
 %% Final Predictions for Missing Values Using the Selected Models
 % for kk = 1:20
 %     modelType = bestModels{kk, 2};
