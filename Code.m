@@ -447,28 +447,30 @@ residPCR = abs(YVal - YTestPredPCR);
 % disp('Best models for each trait:');
 % disp(cell2table(bestModels, 'VariableNames', {'Trait', 'BestModel', 'BestRMSE', 'BestQ2'}));
 % 
-% %% Final Predictions for Missing Values using the Selected Models
+%
+%% Final Predictions for Missing Values Using the Selected Models
 % for kk = 1:20
 %     modelType = bestModels{kk, 2};
+%     optimalComponents = bestModels{kk, 5}; % Retrieve the optimal number of components
 %     XCal = Matrices{kk, 2};
 %     YCal = Matrices{kk, 3};
 %     XVal = Matrices{kk, 4};
 % 
-%     % Center and scale data using the training set mean and std.
+%     % Center and scale data using training set mean and std.
 %     [XCal, mu, sigma] = zscore(XCal);
 %     XVal = normalize(XVal, 'center', mu, 'scale', sigma);
 %     
 %     if strcmp(modelType, 'PLS')
-%         [~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, idx_PLS);
+%         [~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, optimalComponents);
 %         YPred = [ones(size(XVal, 1), 1), XVal] * bPLS; % Predict using PLS.
 %     else
 %         [P, T, ~] = pca(XCal, 'Centered', false, 'Economy', false);
-%         bPCR = P(:, 1:idx_PCR) * regress(YCal - mean(YCal), T(:, 1:idx_PCR));
+%         bPCR = P(:, 1:optimalComponents) * regress(YCal - mean(YCal), T(:, 1:optimalComponents));
 %         bPCR = [mean(YCal) - mean(XCal) * bPCR; bPCR];
 %         YPred = [ones(size(XVal, 1), 1), XVal] * bPCR; % Predict using PCR.
 %     end
 % 
-%     % Store or visualize the predicted values as needed.
+%     % Display predictions
 %     disp(['Predictions for missing values for trait ', name_list(kk), ':']);
 %     disp(YPred);
 % end
