@@ -232,8 +232,27 @@ for kk=1
     RMSE_CV_PLS = mean(RMSEPLS);
     RMSE_CV_PCR = mean(RMSEPCR);
     
-    Opt_noLV = min(find(RMSE_CV_PLS == min(RMSE_CV_PLS)), find(Q2_CV_PLS == max(Q2_CV_PLS)));
-    Opt_noComp = min(find(RMSE_CV_PCR == min(RMSE_CV_PCR)), find(Q2_CV_PCR == max(Q2_CV_PCR)));
+    % LV number selection
+    Q2_max_PLS = max(Q2_CV_PLS);
+    Q2_mod_PLS = Q2_max_PLS * 0.03;
+    Q2_upper_lim_PLS = Q2_max_PLS - Q2_mod_PLS;
+
+    RMSE_min_PLS = min(RMSE_CV_PLS);
+    RMSE_mod_PLS = RMSE_min_PLS * 0.03;
+    RMSE_lower_lim_PLS = RMSE_min_PLS + RMSE_mod_PLS;
+
+    Opt_noLV = min(min(find(RMSE_CV_PLS < RMSE_lower_lim_PLS)), min(find(Q2_CV_PLS > Q2_upper_lim_PLS)));
+
+    % Component number selection
+    Q2_max_PCR = max(Q2_CV_PCR);
+    Q2_mod_PCR = Q2_max_PCR * 0.03;
+    Q2_upper_lim_PCR = Q2_max_PCR - Q2_mod_PCR;
+
+    RMSE_min_PCR = min(RMSE_CV_PCR);
+    RMSE_mod_PCR = RMSE_min_PCR * 0.03;
+    RMSE_lower_lim_PCR = RMSE_min_PCR + RMSE_mod_PCR;
+
+    Opt_noComp = min(min(find(RMSE_CV_PCR < RMSE_lower_lim_PCR)), min(find(Q2_CV_PCR > Q2_upper_lim_PCR)));
   
     % figure;
     % plot(Q2_CV_PLS);
