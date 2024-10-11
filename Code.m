@@ -345,7 +345,6 @@ residPCR = abs(YVal - YTestPredPCR);
 
 
 
-
 %%----XX----%%
 %% Initialize variables for storing model performance
 % nLV = 50; % Max number of latent variables to test
