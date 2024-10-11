@@ -337,8 +337,105 @@ end
 filename = "trait_matrix.mat";
 save(filename, 'trait_table')
 
-%%
+%% Load the completed trait matrix
 data_test = load('trait_matrix.mat')
+
+%%----XX----%%
+
+%Note from Duma- Important note-: do not start implementing random models at this point, because it will be of no use. We have not yet reached in the course the implementation methods we will use in the project work, that's why we are just preparing the models at this points. 
+%For the project work of the data analysis part, we will only utilize multivariate statistical methods studied in the course: PCA, Kernel PCA, Robust PCA, PCR, PLS, Dynamic PLS, Kernel PLS. The deep learning models will come later in the Machine Learning part.  :)
+
+data = data_test;
+trait_table = data.trait_table;
+
+name_list=["Anth","Boron","C","Ca","Car","Cellulose","Chl","Copper","EWT","Fiber","LAI","Lignin","LMA","Magnesium","Manganese","N","NSC","Phosphorus","Potassium","Sulfur"];
+
+% Display the size of the trait table for verification
+disp('Size of the trait table:');
+disp(size(trait_table)); % Should be 13295 x 20
+%%
+
+% % Plot a heatmap to see correlations between traits
+% figure;
+% corr_matrix = corr(trait_table, 'rows', 'pairwise');
+% heatmap(name_list, name_list, corr_matrix);
+% title('Correlation Heatmap of Traits');
+
+
+%%
+%% Perform PCA on the trait table
+% Center and standardize the trait data before PCA
+[coeff, score, latent, tsquared, explained] = pca(trait_table);
+
+% Display the explained variance of each principal component
+disp('Explained variance by each principal component:');
+disp(explained);
+
+% Plot the cumulative explained variance to determine how many PCs to retain
+figure;
+cumulative_explained = cumsum(explained);
+plot(cumulative_explained, '-o', 'LineWidth', 2);
+xlabel('Number of Principal Components');
+ylabel('Cumulative Variance Explained (%)');
+title('Cumulative Explained Variance by Principal Components');
+grid on;
+
+%% Plot the first two principal components
+% This helps to visualize how the samples are spread in the space of the first two principal components.
+figure;
+scatter(score(:, 1), score(:, 2), 10, 'filled');
+xlabel('Principal Component 1');
+ylabel('Principal Component 2');
+title('PCA: Trait Data - PC1 vs PC2');
+grid on;
+
+% label points or show trait loadings
+hold on;
+for i = 1:size(coeff, 2)
+    text(coeff(i, 1) * max(score(:, 1)), coeff(i, 2) * max(score(:, 2)), name_list(i), ...
+        'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', 'FontSize', 8, 'Color', 'red');
+end
+hold off;
+
+%% Display loadings of the first few PCs to understand trait contributions
+disp('Loadings of the first three principal components:');
+disp(coeff(:, 1:3)); % Shows the contribution of each trait to the first three PCs
+
+% Create a bar plot of the loadings for the first principal component
+figure;
+bar(coeff(:, 1));
+set(gca, 'XTickLabel', name_list, 'XTickLabelRotation', 45);
+xlabel('Traits');
+ylabel('Loading');
+title('Trait Contributions to PC1');
+grid on;
+
+%% Interpret PCA results
+% Display the most important traits contributing to the first few PCs.
+% This can help identify which traits drive most of the variability in the dataset.
+[~, sorted_idx] = sort(abs(coeff(:, 1)), 'descend');
+disp('Most important traits contributing to PC1:');
+disp(name_list(sorted_idx(1:5))); % Display the top 5 contributing traits for PC1
+
+% Similarly, for the second principal component:
+[~, sorted_idx] = sort(abs(coeff(:, 2)), 'descend');
+disp('Most important traits contributing to PC2:');
+disp(name_list(sorted_idx(1:5))); % Display the top 5 contributing traits for PC2
+
+
+%%
+% % Check for any remaining NaN values
+% missing_values = sum(isnan(trait_table), 'all');
+% disp(['Total number of remaining missing values: ', num2str(missing_values)]);
+%%
+
+
+%%----XX----%%
+
+
+
+
+%%
 
 %% Get the coefficients beta
 %noPCsPCR =  Opt_noComp;
