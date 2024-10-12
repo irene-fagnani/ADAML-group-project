@@ -108,7 +108,6 @@ commonColumns = intersect(df1_orig.Properties.VariableNames, df2_orig.Properties
 df1_common = df1_orig(:, commonColumns);
 df2_common = df2_orig(:, commonColumns);
 
-
 df_tot = [df1_common; df2_common];
 df_totM = table2array([df1_common; df2_common]);
 
@@ -149,6 +148,35 @@ for ii=1:size(Matrices,1)
     xlabel(Matrices{ii,1});
 end
 
+%% Bar chart of trait observations
+n = length(Matrices);
+y = ones(n,1);
+
+% Loop through each cell in the table
+for trait = 1:n
+    y(trait) = length(Matrices{trait,2});
+end
+
+x = 1:20;
+
+figure;
+bar(x,y)
+title('Number of observations per trait variable', 'FontSize', 30);
+xlabel('Trait name', 'FontSize', 25);
+ylabel('Number of Obsevations', 'FontSize', 25);
+set(gca, 'FontSize', 20);
+
+
+xticks(1:length(name_list));
+xticklabels(name_list);
+xtickangle(45);  
+
+for i = 1:length(y)
+    text(x(i), y(i), num2str(y(i)), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center');
+end
+
+% Adjust x-axis limits to make sure all text is visible
+xlim([0 length(y) + 1]);
 
 %% PLS/PCR Model and k-fold Cross-Validation
 clc
@@ -156,7 +184,7 @@ nLV = 50;
 k = 5;
 bestModels = cell(20, 4); % Store best model results for each trait.
 
-for kk=1:length(Matrices)
+for kk=2
     % Into predictor variables and predicted variable
     X0 = Matrices{kk,2};
     Y0 = Matrices{kk,3};
@@ -168,7 +196,7 @@ for kk=1:length(Matrices)
     part    = cvpartition(nobs, 'HoldOut', 0.3);
     idxCal  = training(part);
     idxTest  = test(part);
-
+    
     X = X0(idxCal, :);
     Y = Y0(idxCal);
 
@@ -298,35 +326,43 @@ for kk=1:length(Matrices)
     end
     
     Matrices{kk, 5} = YPred;
-
+    
     % Store the selected model information
     bestModels{kk, 1} = name_list(kk);
     bestModels{kk, 2} = bestModel;
     bestModels{kk, 3} = bestRMSE;
     bestModels{kk, 4} = bestQ2;
 
-    % figure;
-    % plot(Q2_CV_PLS);
-    % hold on;
-    % plot(Q2_CV_PCR);
-    % xlabel("No LVs in the model.")
-    % ylabel("Q^2_{CV}")
-    % legend(["PLS"; "PCR"])
-    % 
-    % figure;
-    % plot(RMSE_CV_PLS);
-    % hold on;
-    % plot(RMSE_CV_PCR);
-    % xlabel("No LVs in the model.")
-    % ylabel("RMSE_{CV}")
-    % legend(["PLS"; "PCR"]);
+    figure;
+    hold on;
+    plot(Q2_CV_PLS);
+    plot(Q2_CV_PCR);
+    plot(Opt_noLV, Q2_CV_PLS(Opt_noLV), 'b.', 'MarkerSize', 40)
+    plot(Opt_noComp, Q2_CV_PCR(Opt_noComp), 'r.', 'MarkerSize', 40)
+    title('Q2 comparison', 'FontSize', 30)
+    xlabel("No of LVs/Components in the model.", 'FontSize', 25)
+    ylabel("Q^2_{CV}", 'FontSize', 25)
+    legend(["PLS"; "PCR";""], 'FontSize', 20)
+    set(gca, 'FontSize', 20);
+
+    figure;
+    hold on;
+    plot(RMSE_CV_PLS);
+    plot(RMSE_CV_PCR);
+    plot(Opt_noLV, RMSE_CV_PLS(Opt_noLV), 'b.', 'MarkerSize', 40)
+    plot(Opt_noComp, RMSE_CV_PCR(Opt_noComp), 'r.', 'MarkerSize', 40)
+    title('RMSE comparison', 'FontSize', 30)
+    xlabel("No of LVs/Components in the model.", 'FontSize', 25)
+    ylabel("RMSE_{CV}", 'FontSize', 25)
+    legend(["PLS"; "PCR"], 'FontSize', 20);
+    set(gca, 'FontSize', 20);
 end
 
 % Display the selected best models for each trait
 disp('Best models for each trait:');
 disp(cell2table(bestModels, 'VariableNames', {'Trait', 'BestModel', 'BestRMSE', 'BestQ2'}));
 
-%% Recreate the table of traits and wavelengths
+%% Create the complete trait matrix
 trait_table = zeros(13295, 20);
 for i = 1:length(Matrices)
     found_idx = Matrices{i, 6};
@@ -337,6 +373,119 @@ end
 filename = "trait_matrix.mat";
 save(filename, 'trait_table')
 
-%% Load the completed trait matrix
-data_test = load('trait_matrix.mat')
+%% PCA on the complete trait matrix
+clearvars
+close all
+clc
 
+name_list=["Anth","Boron","C","Ca","Car","Cellulose","Chl","Copper","EWT","Fiber","LAI","Lignin","LMA","Magnesium","Manganese","N","NSC","Phosphorus","Potassium","Sulfur"];
+
+trait_matrix_data = load('trait_matrix.mat');
+trait_matrix = trait_matrix_data.trait_table;
+
+figure;
+boxplot(trait_matrix)
+title('Boxplot of trait data', 'FontSize', 30)
+xticks(1:length(name_list));
+xticklabels(name_list);
+xtickangle(45);
+set(gca, 'FontSize', 20);
+
+% Rescale and visualize again
+trait_matrix = zscore(trait_matrix);
+
+figure;
+boxplot(trait_matrix)
+title('Boxplot of scaled trait data', 'FontSize', 30)
+xticks(1:length(name_list));
+xticklabels(name_list);
+xtickangle(45);
+set(gca, 'FontSize', 20);
+
+% PCA using MatLab's pca()-function
+[Loadings, Scores, EigenVals, T2, Explained, mu] = pca(trait_matrix);
+
+% Plotting cumulative explained variance
+figure;
+pareto(Explained)
+title('Cumulative explained variance', 'FontSize', 30)
+xlabel('Principal component', 'FontSize', 25);
+ylabel('% of variance explained', 'FontSize', 25)
+set(gca, 'FontSize', 20);
+
+% Appears that 9 principal components are required to explain 95% of cumulative variance
+name_list=["Anth","Boron","C","Ca","Car","Cellulose","Chl","Copper","EWT","Fiber","LAI","Lignin","LMA","Magnesium","Manganese","N","NSC","Phosphorus","Potassium","Sulfur"];
+
+% biplot
+figure;
+biplot(Loadings(:, 1:2), 'scores', Scores(:, 1:2), 'varlabels', name_list)
+title('Biplot of traits', 'FontSize', 30)
+set(gca, 'FontSize', 20);
+
+% Visualizing Loading values
+
+% Component 1 Loadings
+figure;
+bar(Loadings(:,1));
+title('Component 1 Loadings', 'FontSize', 30);
+xlabel('Trait', 'FontSize', 25);
+ylabel('Loading value', 'FontSize', 25);
+set(gca, 'FontSize', 20);
+
+xticks(1:length(name_list));
+xticklabels(name_list);
+xtickangle(45);                           
+
+% Component 2 Loadings
+figure;
+bar(Loadings(:,2));
+title('Component 2 Loadings', 'FontSize', 30);
+xlabel('Trait', 'FontSize', 25);
+ylabel('Loading value', 'FontSize', 25);
+set(gca, 'FontSize', 20);
+
+xticks(1:length(name_list));              
+xticklabels(name_list);                   
+xtickangle(45);      
+%% Get the coefficients beta
+%noPCsPCR =  Opt_noComp;
+%noPCsPLS =   Opt_noLV;
+
+noPCsPCR =  10;
+noPCsPLS =   15;
+
+% considering XCal all the Matrices{kk,2} and XVal the Matrices{kk,4}
+kk=1;
+% for kk=1:20
+XCal=Matrices{kk,2};
+YCal=Matrices{kk,3};
+[P, T, latent] = pca(XCal, 'Centered', false, 'Economy', false);
+% Re-calibrate the models with the combined cal-val partition
+bPCR = [];
+bPCR = P(:,1:noPCsPCR) * regress(YCal, T(:,1:noPCsPCR)); 
+bPCR = [mean(YCal) - mean(XCal) * bPCR; bPCR]; % Add intercept.
+     
+[~, ~, ~, ~, bPLS] = plsregress(XCal, YCal, noPCsPLS);
+
+figure;
+betas = [bPLS(2:end), bPCR(2:end)];
+bar(betas);
+legend(["PLS Regression Coefficients", "PCR Regression Coefficients"]);
+
+
+%% Residuals
+% resid
+residPLS = abs(YVal - YTestPredPLS);
+residPCR = abs(YVal - YTestPredPCR);
+
+% subplot(1,2,1);
+% scatter(model(1).YTest, residPLS, 'filled');
+% xlabel("Age [normalized]");
+% ylabel("Estimate Age error");
+% title("PLS Estimation Residuals");
+
+% subplot(1,2,2);
+% scatter(model(1).YTest, residPCR, 'filled');
+% xlabel("Age [normalized]");
+% ylabel("Estimate Age error");
+% title("PCR Estimation Residuals");
