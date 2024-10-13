@@ -375,8 +375,9 @@ save(filename, 'trait_table')
 
 %% PCA on the complete trait matrix
 clearvars
-close all
+close all -except Matrices
 clc
+
 
 name_list=["Anth","Boron","C","Ca","Car","Cellulose","Chl","Copper","EWT","Fiber","LAI","Lignin","LMA","Magnesium","Manganese","N","NSC","Phosphorus","Potassium","Sulfur"];
 
@@ -455,8 +456,8 @@ noPCsPCR =  10;
 noPCsPLS =   15;
 
 % considering XCal all the Matrices{kk,2} and XVal the Matrices{kk,4}
-kk=1;
-% for kk=1:20
+
+for kk=1:20
 XCal=Matrices{kk,2};
 YCal=Matrices{kk,3};
 [P, T, latent] = pca(XCal, 'Centered', false, 'Economy', false);
@@ -471,7 +472,7 @@ figure;
 betas = [bPLS(2:end), bPCR(2:end)];
 bar(betas);
 legend(["PLS Regression Coefficients", "PCR Regression Coefficients"]);
-
+end
 
 %% Residuals
 % resid
