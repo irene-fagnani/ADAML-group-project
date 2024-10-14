@@ -32,37 +32,6 @@ M_complete = table2array(unique(df_complete, 'rows'));
 M_traits = M_complete(:,1:37);
 M_wl = M_complete(:,38:end);
 
-%% Plotting of trait observations in all data rows.
-traits = M_complete(:,1:37);
-
-observations = ones(height(traits), width(traits));
-
-% Loop through each cell in the table
-for row = 1:height(traits)
-    for col = 1:width(traits)
-        cell_value = traits(row, col);
-        % Check if the cell is empty (either NaN or empty string)
-        if (isnumeric(cell_value) && isnan(cell_value)) || (ischar(cell_value) && isempty(cell_value))
-            observations(row, col) = 0;
-        end
-    end
-end
-
-y = sum(observations);
-x = 1:1:37;
-
-figure;
-bar(x,y)
-title('Number of observations per trait variable');
-xlabel('Trait variable index');
-ylabel('Number of Obsevations');
-
-for i = 1:length(y)
-    text(x(i), y(i), num2str(y(i)), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center');
-end
-
-% Adjust x-axis limits to make sure all text is visible
-xlim([0 length(y) + 1]);
 
 %% Plotting all wavelengths for visualization purposes
 % Missing points included as NaN values
@@ -101,7 +70,6 @@ grid on;
 figure;
 boxplot(M_traits)
 
-% Corrplot is not possible for all response variables; there are too many
 %% Matrix creations
 commonColumns = intersect(df1_orig.Properties.VariableNames, df2_orig.Properties.VariableNames);
 
@@ -184,7 +152,8 @@ nLV = 50;
 k = 5;
 bestModels = cell(20, 4); % Store best model results for each trait.
 
-for kk=2
+for kk=1:length(Matrices)
+
     % Into predictor variables and predicted variable
     X0 = Matrices{kk,2};
     Y0 = Matrices{kk,3};
@@ -332,30 +301,31 @@ for kk=2
     bestModels{kk, 2} = bestModel;
     bestModels{kk, 3} = bestRMSE;
     bestModels{kk, 4} = bestQ2;
-
-    figure;
-    hold on;
-    plot(Q2_CV_PLS);
-    plot(Q2_CV_PCR);
-    plot(Opt_noLV, Q2_CV_PLS(Opt_noLV), 'b.', 'MarkerSize', 40)
-    plot(Opt_noComp, Q2_CV_PCR(Opt_noComp), 'r.', 'MarkerSize', 40)
-    title('Q2 comparison', 'FontSize', 30)
-    xlabel("No of LVs/Components in the model.", 'FontSize', 25)
-    ylabel("Q^2_{CV}", 'FontSize', 25)
-    legend(["PLS"; "PCR";""], 'FontSize', 20)
-    set(gca, 'FontSize', 20);
-
-    figure;
-    hold on;
-    plot(RMSE_CV_PLS);
-    plot(RMSE_CV_PCR);
-    plot(Opt_noLV, RMSE_CV_PLS(Opt_noLV), 'b.', 'MarkerSize', 40)
-    plot(Opt_noComp, RMSE_CV_PCR(Opt_noComp), 'r.', 'MarkerSize', 40)
-    title('RMSE comparison', 'FontSize', 30)
-    xlabel("No of LVs/Components in the model.", 'FontSize', 25)
-    ylabel("RMSE_{CV}", 'FontSize', 25)
-    legend(["PLS"; "PCR"], 'FontSize', 20);
-    set(gca, 'FontSize', 20);
+    
+    % Visualizations for debugging/visualizations
+    % figure;
+    % hold on;
+    % plot(Q2_CV_PLS);
+    % plot(Q2_CV_PCR);
+    % plot(Opt_noLV, Q2_CV_PLS(Opt_noLV), 'b.', 'MarkerSize', 40)
+    % plot(Opt_noComp, Q2_CV_PCR(Opt_noComp), 'r.', 'MarkerSize', 40)
+    % title('Q2 comparison', 'FontSize', 30)
+    % xlabel("No of LVs/Components in the model.", 'FontSize', 25)
+    % ylabel("Q^2_{CV}", 'FontSize', 25)
+    % legend(["PLS"; "PCR";""], 'FontSize', 20)
+    % set(gca, 'FontSize', 20);
+    % 
+    % figure;
+    % hold on;
+    % plot(RMSE_CV_PLS);
+    % plot(RMSE_CV_PCR);
+    % plot(Opt_noLV, RMSE_CV_PLS(Opt_noLV), 'b.', 'MarkerSize', 40)
+    % plot(Opt_noComp, RMSE_CV_PCR(Opt_noComp), 'r.', 'MarkerSize', 40)
+    % title('RMSE comparison', 'FontSize', 30)
+    % xlabel("No of LVs/Components in the model.", 'FontSize', 25)
+    % ylabel("RMSE_{CV}", 'FontSize', 25)
+    % legend(["PLS"; "PCR"], 'FontSize', 20);
+    % set(gca, 'FontSize', 20);
 end
 
 % Display the selected best models for each trait
@@ -447,7 +417,10 @@ set(gca, 'FontSize', 20);
 
 xticks(1:length(name_list));              
 xticklabels(name_list);                   
-xtickangle(45);      
+xtickangle(45);
+
+% Additional in-progress code below:
+
 %% Get the coefficients beta
 %noPCsPCR =  Opt_noComp;
 %noPCsPLS =   Opt_noLV;
