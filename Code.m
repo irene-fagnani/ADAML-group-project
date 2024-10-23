@@ -280,21 +280,25 @@ for kk=1:length(Matrices)
     
     % Final predictions
     XPred = Matrices{kk, 4}; % X matrix with missing trait values
+    XExt = Matrices{kk,2}; % X matrix with already existing trait values
     X0 = zscore(X0); % Scale X0 to match the previously scaled XPred
 
     if strcmp(bestModel,'PLS')
         % Predict using PLS
         [~, ~, ~, ~, bPLS] = plsregress(X0, Y0, Opt_noLV);
         YPred = [ones(size(XPred, 1), 1), XPred] * bPLS; % Predict using PLS.
+        YExt = [ones(size(XExt, 1), 1), XExt] * bPLS; % Predict using PLS.
     else
          % Predict using PCR.
         [P, T, ~] = pca(X0, 'Centered', false, 'Economy', false);
         bPCR = P(:, 1:Opt_noComp) * regress(Y0 - mean(Y0), T(:, 1:Opt_noComp));
         bPCR = [mean(Y0) - mean(X0) * bPCR; bPCR];
         YPred = [ones(size(XPred, 1), 1), XPred] * bPCR;
+        YExt = [ones(size(XExt, 1), 1), XExt] * bPCR;
     end
     
     Matrices{kk, 5} = YPred;
+    Matrices{kk, 8} = YExt;
     
     % Store the selected model information
     bestModels{kk, 1} = name_list(kk);
@@ -437,9 +441,9 @@ for kk=1:20
 %kk=1;
 figure;
 YPred=Matrices{kk,5};
-scatter(Matrices{kk,3}, YPred(Matrices{kk,6},1));
-min_abs=min(min(Matrices{kk,3}), min(YPred(Matrices{kk,6},1)));
-max_abs=max(max(Matrices{kk,3}), max(YPred(Matrices{kk,6},1)));
+scatter(Matrices{kk,3}, Matrices{kk,8});
+min_abs=min(min(Matrices{kk,3}), min(Matrices{kk,8}));
+max_abs=max(max(Matrices{kk,3}), max(Matrices{kk,8}));
 xlim([min_abs max_abs])
 ylim([min_abs max_abs])
 end
