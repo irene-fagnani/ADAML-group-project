@@ -102,7 +102,7 @@ for i = 1:20
     Matrices{i, 7} = idx_miss; %indexes of missing values
 end
 
-clearvars -except Matrices name_list
+%clearvars -except Matrices name_list
 close all
 clc
 
@@ -344,7 +344,7 @@ filename = "trait_matrix.mat";
 save(filename, 'trait_table')
 
 %% PCA on the complete trait matrix
-clearvars
+%clearvars
 %close all -except Matrices
 clc
 
@@ -421,6 +421,29 @@ set(gca, 'FontSize', 20);
 xticks(1:length(name_list));              
 xticklabels(name_list);                   
 xtickangle(45);
+%% Residuals
+
+% after running the first 4 parts of code + the above one:
+
+% Matrices{i, 1} = name_list(i);
+% Matrices{i, 2} = X; % X with found Y
+% Matrices{i, 3} = Y; % Found Y
+% Matrices{i, 4} = X_nans; % Scaled and Centered missing y X-values
+% Matrices{i,5} =
+% Matrices{i, 6} = idx; % Indexes of found values
+% Matrices{i, 7} = idx_miss; %indexes of missing values
+
+for kk=1:20
+%kk=1;
+figure;
+YPred=Matrices{kk,5};
+scatter(Matrices{kk,3}, YPred(Matrices{kk,6},1));
+min_abs=min(min(Matrices{kk,3}), min(YPred(Matrices{kk,6},1)));
+max_abs=max(max(Matrices{kk,3}), max(YPred(Matrices{kk,6},1)));
+xlim([min_abs max_abs])
+ylim([min_abs max_abs])
+end
+
 
 % Additional in-progress code below:
 
@@ -450,19 +473,4 @@ bar(betas);
 legend(["PLS Regression Coefficients", "PCR Regression Coefficients"]);
 end
 
-%% Residuals
-% resid
-residPLS = abs(YVal - YTestPredPLS);
-residPCR = abs(YVal - YTestPredPCR);
 
-% subplot(1,2,1);
-% scatter(model(1).YTest, residPLS, 'filled');
-% xlabel("Age [normalized]");
-% ylabel("Estimate Age error");
-% title("PLS Estimation Residuals");
-
-% subplot(1,2,2);
-% scatter(model(1).YTest, residPCR, 'filled');
-% xlabel("Age [normalized]");
-% ylabel("Estimate Age error");
-% title("PCR Estimation Residuals");
