@@ -440,10 +440,10 @@ xtickangle(45);
 for kk=1:20
 %kk=1;
 figure;
-YPred=Matrices{kk,5};
 scatter(Matrices{kk,3}, Matrices{kk,8});
 min_abs=min(min(Matrices{kk,3}), min(Matrices{kk,8}));
 max_abs=max(max(Matrices{kk,3}), max(Matrices{kk,8}));
+
 xlim([min_abs max_abs])
 ylim([min_abs max_abs])
 end
