@@ -345,7 +345,7 @@ save(filename, 'trait_table')
 
 %% PCA on the complete trait matrix
 clearvars
-close all -except Matrices
+%close all -except Matrices
 clc
 
 
@@ -390,8 +390,11 @@ name_list=["Anth","Boron","C","Ca","Car","Cellulose","Chl","Copper","EWT","Fiber
 % biplot
 figure;
 biplot(Loadings(:, 1:2), 'scores', Scores(:, 1:2), 'varlabels', name_list)
+xlabel("PC " + string(1) + " R^2: " + string(round(Explained(1))) + " %");
+ylabel("PC " + string(2) + " R^2: " + string(round(Explained(2))) + " %");
 title('Biplot of traits', 'FontSize', 30)
 set(gca, 'FontSize', 20);
+
 
 % Visualizing Loading values
 
