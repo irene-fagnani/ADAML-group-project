@@ -282,12 +282,16 @@ for kk=1:length(Matrices)
     XPred = Matrices{kk, 4}; % X matrix with missing trait values
     XExt = Matrices{kk,2}; % X matrix with already existing trait values
     X0 = zscore(X0); % Scale X0 to match the previously scaled XPred
+    XPred=zscore(XPred);
+    XExt=zscore(XExt);
 
     if strcmp(bestModel,'PLS')
         % Predict using PLS
         [~, ~, ~, ~, bPLS] = plsregress(X0, Y0, Opt_noLV);
         YPred = [ones(size(XPred, 1), 1), XPred] * bPLS; % Predict using PLS.
         YExt = [ones(size(XExt, 1), 1), XExt] * bPLS; % Predict using PLS.
+        bestModels{kk, 5} = Opt_noLV;
+   
     else
          % Predict using PCR.
         [P, T, ~] = pca(X0, 'Centered', false, 'Economy', false);
@@ -295,6 +299,7 @@ for kk=1:length(Matrices)
         bPCR = [mean(Y0) - mean(X0) * bPCR; bPCR];
         YPred = [ones(size(XPred, 1), 1), XPred] * bPCR;
         YExt = [ones(size(XExt, 1), 1), XExt] * bPCR;
+        bestModels{kk, 5} = Opt_noComp;
     end
     
     Matrices{kk, 5} = YPred;
@@ -331,10 +336,10 @@ for kk=1:length(Matrices)
     % legend(["PLS"; "PCR"], 'FontSize', 20);
     % set(gca, 'FontSize', 20);
 end
-
+%%
 % Display the selected best models for each trait
 disp('Best models for each trait:');
-disp(cell2table(bestModels, 'VariableNames', {'Trait', 'BestModel', 'BestRMSE', 'BestQ2'}));
+disp(cell2table(bestModels, 'VariableNames', {'Trait', 'BestModel', 'BestRMSE', 'BestQ2', 'number of LVs/Components'}));
 
 %% Create the complete trait matrix
 trait_table = zeros(13295, 20);
@@ -439,13 +444,15 @@ xtickangle(45);
 
 for kk=1:20
 %kk=1;
-figure;
-scatter(Matrices{kk,3}, Matrices{kk,8});
+subplot(4,5,kk);
+scatter(Matrices{kk,3}, abs(Matrices{kk,3}-Matrices{kk,8}));
 min_abs=min(min(Matrices{kk,3}), min(Matrices{kk,8}));
 max_abs=max(max(Matrices{kk,3}), max(Matrices{kk,8}));
-
-xlim([min_abs max_abs])
-ylim([min_abs max_abs])
+%xlim([min_abs max_abs])
+%ylim([min_abs max_abs])
+xlabel("normalized trait")
+ylabel("Estimation Residuals")
+title(Matrices{kk,1})
 end
 
 
