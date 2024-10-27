@@ -102,7 +102,39 @@ for i = 1:20
     Matrices{i, 7} = idx_miss; %indexes of missing values
 end
 
-%clearvars -except Matrices name_list
+
+% Indices for plotting later the amount of estimated parameters per
+% observation
+all_indices = [1:length(df_totM)]';
+
+for i = 1:20
+    all_indices = [all_indices; Matrices{i, 7}];
+end
+
+% Find unique indicies 
+unique_indices = unique(all_indices);
+counts = histc(all_indices, unique_indices)-1;
+
+% Display the unique indices and their counts
+estimated_counts = [unique_indices, counts];
+disp(estimated_counts);
+
+%% Additional visualizations:
+
+% Boxplot of trait vars
+
+% Explicitly define name_list as a cell array of character vectors
+name_list = {'Anth', 'Boron', 'C', 'Ca', 'Car', 'Cellulose', 'Chl', 'Copper', 'EWT', 'Fiber', 'LAI', 'Lignin', 'LMA', 'Magnesium', 'Manganese', 'N', 'NSC', 'Phosphorus', 'Potassium', 'Sulfur'};
+
+figure;
+boxplot(df_totM(:,1:20), 'Labels', name_list); 
+
+title('Boxplot of Variables');
+xlabel('Variables');
+ylabel('Values');
+set(gca, 'FontSize', 20);
+
+clearvars -except Matrices name_list estimated_counts
 close all
 clc
 
@@ -384,6 +416,24 @@ set(gca, 'FontSize', 20);
 
 % PCA using MatLab's pca()-function
 [Loadings, Scores, EigenVals, T2, Explained, mu] = pca(trait_matrix);
+
+% Match counts to rows of Scores (PCA results)
+index_counts = zeros(size(Scores, 1), 1); % Preallocate the array for index counts
+
+for i = 1:length(estimated_counts)
+    idx = estimated_counts(i,1);
+    % Assign the count for each unique index
+    index_counts(idx) = estimated_counts(i, 2);
+end
+
+% Plot the PCA scatter plot with colors based on estimated trait amounts:
+figure;
+scatter(Scores(:, 1), Scores(:, 2), 50, index_counts, 'filled');
+colorbar; % Show color scale
+xlabel('Component 1');
+ylabel('Component 2');
+title('PCA 1 vs PCA 2 Colored by amount of estimated traits');
+set(gca, 'FontSize', 20);
 
 % Plotting cumulative explained variance
 figure;
