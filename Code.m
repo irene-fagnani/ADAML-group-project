@@ -28,6 +28,7 @@ df2_complete = df2(:, df_names);
 df_complete = [df1_complete;df2_complete];
 df_complete.Var1 = [];
 
+% Creating a complete table of all trait vars and wavelengths (concentration variables included for now)
 M_complete = table2array(unique(df_complete, 'rows'));
 M_traits = M_complete(:,1:37);
 M_wl = M_complete(:,38:end);
@@ -64,15 +65,11 @@ ylabel('Reflectance');
 legend('show');
 grid on;
 
-%% Additional visualizations:
-
-% Boxplot of trait vars
-figure;
-boxplot(M_traits)
-
 %% Matrix creations
+% Saving all data per trait in cell array
 commonColumns = intersect(df1_orig.Properties.VariableNames, df2_orig.Properties.VariableNames);
 
+% Including only 20 trait content variables, concentration vars dropped
 df1_common = df1_orig(:, commonColumns);
 df2_common = df2_orig(:, commonColumns);
 
@@ -90,7 +87,7 @@ for i = 1:20
     X_nans = df_totM(nans, 22:end);
     Y = df_totM(nans==0, i);
     
-    % Scaling and centering
+    % Scaling and centering the x matrices at this point
     [X_bar,mu,sigma] = zscore(X);
     X_nans = normalize(X_nans,'center',mu,'scale',sigma);
     
@@ -122,10 +119,6 @@ disp(estimated_counts);
 %% Additional visualizations:
 
 % Boxplot of trait vars
-
-% Explicitly define name_list as a cell array of character vectors
-name_list = {'Anth', 'Boron', 'C', 'Ca', 'Car', 'Cellulose', 'Chl', 'Copper', 'EWT', 'Fiber', 'LAI', 'Lignin', 'LMA', 'Magnesium', 'Manganese', 'N', 'NSC', 'Phosphorus', 'Potassium', 'Sulfur'};
-
 figure;
 boxplot(df_totM(:,1:20), 'Labels', name_list); 
 
@@ -134,12 +127,14 @@ xlabel('Variables');
 ylabel('Values');
 set(gca, 'FontSize', 20);
 
+%% Clearing cached vars except the vars needed later
 clearvars -except Matrices name_list estimated_counts
 close all
 clc
 
 %% Visualizing of preprocessed data
 
+% Alternate box plot of Matrices data
 figure;
 sgtitle("Box-plot of pre-processed data.")
 for ii=1:size(Matrices,1)
@@ -149,6 +144,9 @@ for ii=1:size(Matrices,1)
 end
 
 %% Bar chart of trait observations
+
+% Plot of existing observations per trait variable
+
 n = length(Matrices);
 y = ones(n,1);
 
@@ -166,7 +164,6 @@ xlabel('Trait name', 'FontSize', 25);
 ylabel('Number of Obsevations', 'FontSize', 25);
 set(gca, 'FontSize', 20);
 
-
 xticks(1:length(name_list));
 xticklabels(name_list);
 xtickangle(45);  
@@ -179,9 +176,12 @@ end
 xlim([0 length(y) + 1]);
 
 %% PLS/PCR Model and k-fold Cross-Validation
-clc
-nLV = 50;
-k = 5;
+% Actual model creation and data predictions
+% This part doesn't need to be run if complete trait_matrix.mat is already done
+
+nLV = 50;   % Max latent variables/components to test
+k = 5;      % Number of folds
+
 bestModels = cell(20, 4); % Store best model results for each trait.
 
 for kk=1:length(Matrices)
@@ -200,11 +200,13 @@ for kk=1:length(Matrices)
     
     X = X0(idxCal, :);
     Y = Y0(idxCal);
-
+    
+    % K-fold split
     cv = cvpartition(size(Y, 1), 'KFold', k);
     disp(['Training model for trait ', num2str(kk)])
     nCols = size(X0,2)+1;
-
+    
+    % Preallocation of Q2 and RMSE vars
     bPCR = zeros(nCols, 1);
     PRESSPCR = zeros(k, nLV);
     RMSEPCR = zeros(k, nLV);
@@ -215,6 +217,7 @@ for kk=1:length(Matrices)
     Q2PLS = zeros(k, nLV);
 
     for i = 1:k
+        % Data split
         trainIdx = training(cv, i);
         testIdx  = test(cv, i);
 
@@ -236,7 +239,8 @@ for kk=1:length(Matrices)
 
         [rows, ~] = size(XVal);
         
-        
+        % Calculating RMSE and Q2 for each number of latent variables and
+        % components
         for j = 1:nLV
             disp(['Trait ', num2str(kk), ', fold ', num2str(i), ',  part ', num2str(j)])
             bPCR(1:end-1)        = P(:,1:j) * regress(YCal, T(:,1:j));
@@ -253,6 +257,7 @@ for kk=1:length(Matrices)
             Q2PLS(i,j)           = 1 - PRESSPLS(i,j)/TSS;
         end
     end
+
     disp(['Training for trait ', num2str(kk), ' completed.'])
     Q2_CV_PLS = mean(Q2PLS);
     Q2_CV_PCR = mean(Q2PCR);
@@ -271,7 +276,7 @@ for kk=1:length(Matrices)
 
     Opt_noLV = min(min(find(RMSE_CV_PLS < RMSE_lower_lim_PLS)), min(find(Q2_CV_PLS > Q2_upper_lim_PLS)));
 
-    % Component number selection
+    % Optimal component number selection
     Q2_max_PCR = max(Q2_CV_PCR);
     Q2_mod_PCR = Q2_max_PCR * 0.05;
     Q2_upper_lim_PCR = Q2_max_PCR - Q2_mod_PCR;
@@ -281,7 +286,8 @@ for kk=1:length(Matrices)
     RMSE_lower_lim_PCR = RMSE_min_PCR + RMSE_mod_PCR;
 
     Opt_noComp = min(min(find(RMSE_CV_PCR < RMSE_lower_lim_PCR)), min(find(Q2_CV_PCR > Q2_upper_lim_PCR)));
-
+    
+    % Selecting best model based on Q2 and RMSE
     if Q2_CV_PLS(Opt_noLV) > Q2_CV_PCR(Opt_noComp)
 
         if RMSE_CV_PLS(Opt_noLV) < RMSE_CV_PCR(Opt_noComp)
@@ -343,7 +349,9 @@ for kk=1:length(Matrices)
     bestModels{kk, 3} = bestRMSE;
     bestModels{kk, 4} = bestQ2;
     
-    % Visualizations for debugging/visualizations
+    % Visualizations for debugging/visualizations (Commented out when
+    % running all model training.
+
     % figure;
     % hold on;
     % plot(Q2_CV_PLS);
@@ -368,12 +376,13 @@ for kk=1:length(Matrices)
     % legend(["PLS"; "PCR"], 'FontSize', 20);
     % set(gca, 'FontSize', 20);
 end
-%%
-% Display the selected best models for each trait
+
+%% Display the selected best models for each trait
 disp('Best models for each trait:');
 disp(cell2table(bestModels, 'VariableNames', {'Trait', 'BestModel', 'BestRMSE', 'BestQ2', 'number of LVs/Components'}));
 
 %% Create the complete trait matrix
+% Creating the matix and saving it into another file for running PCA later
 trait_table = zeros(13295, 20);
 for i = 1:length(Matrices)
     found_idx = Matrices{i, 6};
@@ -384,11 +393,11 @@ end
 filename = "trait_matrix.mat";
 save(filename, 'trait_table')
 
-%% PCA on the complete trait matrix
-%clearvars
-%close all -except Matrices
+clearvars -except Matrices estimated_counts
+close all
 clc
 
+%% PCA on the complete trait matrix
 
 name_list=["Anth","Boron","C","Ca","Car","Cellulose","Chl","Copper","EWT","Fiber","LAI","Lignin","LMA","Magnesium","Manganese","N","NSC","Phosphorus","Potassium","Sulfur"];
 
